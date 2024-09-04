@@ -6,7 +6,8 @@ session_start();
 //============ Xero Config ==================
 $clientId = 'DB8962151A3D4C339A0D4B1E12712771';
 $clientSecret = 'hnXTTDTWyKi4Crhw2TEPnxmyP2qX92TH-HoCadvanaVX9w-P';
-$redirectUri = 'http://localhost/xero-app-new/index.php';
+// old $redirectUri = 'http://localhost/xero-app-new/index.php';
+$redirectUri = 'http://localhost/knack_xero_integration/index.php';
 
 $provider = new \League\OAuth2\Client\Provider\GenericProvider([
     'clientId'                => $clientId,   
