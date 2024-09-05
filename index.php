@@ -203,6 +203,7 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id){
         echo "<tr><th>Customer Number</th><th>Company Name</th><th>Contact Name</th><th>Xero Account Number</th><th>Xero Last Updated</th><th>Xero Cust. Number</th></tr>";
         $knack_customers = array();
         foreach ($data['records'] as $record) {
+            $knackRecordID = $record['id'] ?? 'N/A';
             $customerNumber = $record['field_10'] ?? 'N/A';
             $companyName = $record['field_1'] ?? 'N/A';
             $contactName = $record['field_93'] ?? 'N/A';
@@ -218,11 +219,15 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id){
                     <td>$xeroAccountNumber</td>
                     <td>$xeroLastUpdated</td>
                     <td>$xeroCustomerNumber</td>
-
-
                 </tr>";
 
-            $knack_customers[] = [$customerNumber, $companyName, $contactName, $xeroAccountNumber, $xeroCustomerNumber];
+            $knack_customers[] = [ 
+            'knackRecordID' => $knackRecordID,
+            'customerNumber' => $customerNumber,
+            'companyName' => $companyName,
+            'contactName' => $contactName,
+            'xeroAccountNumber' => $xeroAccountNumber,
+            'xeroCustomerNumber' => $xeroCustomerNumber];
         }
 
         echo "</table>";
@@ -239,13 +244,23 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id){
     return $knack_customers;
 }
 
+function update_knack_record ($CustomersTableEndPoint, $api_key, $app_id){
+    $filter_criteria = [
+        'match' => 'and',
+        'rules' => [
+            'field' => '',
+            'operator' => 'is equal'
+        ]
+    ];
+
+}
+
 //================================= Create a POST request for Customer to Xero
 //==================================================================================//
 function create_or_update_customer_in_xero($knack_customers_data, $tenantID, $provider, $accessToken) {
     // Prepare the customer data from Knack
     foreach ($knack_customers_data as $customer) {
-        $xeroCustomerNumber = $customer[4]; // Assuming the customer number is at index 4
-        
+        $xeroCustomerNumber = $customer['xeroCustomerNumber']; // Assuming the customer number is at index 4
         // Check if the customer already exists in Xero
         $existingCustomerId = search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $accessToken);
         
@@ -344,7 +359,7 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
     $customerData = [
         'Contacts' => [
             [
-                'Name' => $customer[1], // Company Name
+                'Name' => $customer['companyName'],
                 'EmailAddress' => 'example@example.com', // Set default or actual email
                 'Phones' => [
                     [
@@ -379,11 +394,12 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
     try {
         $request = $provider->getAuthenticatedRequest('POST', $createUrl, $accessToken, $options);
         $response = $provider->getParsedResponse($request);
-        if ($response['Status'] == 'OK') {
-            logMessage("Customer created successfully in Xero. ContactID: " . $response['ContactID']);
-            echo '<h3 style="color:#8bbe1b;">Customer created successfully in Xero</h3>';
+        if (isset($response['Status']) && $response['Status']== 'OK') {
+            $contactName = $response['Contacts'][0]['Name'];
+            logMessage("Customer created successfully in Xero. Contact Name: $contactName");
+            echo "<h3 style='color:#8bbe1b;'>Customer created successfully in Xero</h3> Contact Name: $contactName";
         } else {
-            echo '<pre>' . print_r($response, true) . '</pre>';
+            echo 'Customer status not found in the response or error creating customer inXero. <br/><pre>' . print_r($response, true) . '</pre>';
         }
     } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
         logMessage("Error creating customer in Xero: " . $e->getMessage());
