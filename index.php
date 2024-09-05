@@ -286,7 +286,6 @@ function update_knack_record($xeroAccountNumber, $customer, $CustomersTableEndPo
         // Log the successful fetch of customer data
         logMessage("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
         echo ("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
-        echo 'Response:' . $response;
     }
 
     // Close cURL
