@@ -442,7 +442,6 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
             $contactName = $response['Contacts'][0]['Name'];
             logMessage("Customer created successfully in Xero. Contact Name: $contactName");
             echo "<h3 style='color:#8bbe1b;'>Customer created successfully in Xero</h3> Contact Name: $contactName";
-            echo '<pre>' . print_r($response, true) . '</pre>';
 
             //Update record back in Knack
             $xeroAccountNumber = $response['Contacts'][0]['ContactID'];
