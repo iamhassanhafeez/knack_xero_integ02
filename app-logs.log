@@ -58,3 +58,7 @@
 [2024-09-05 08:21:52] Customer record successfully updated in Knack (Customers) table. Record ID: 641146dd080c4006d1d048ee
 [2024-09-05 08:21:53] Customer created successfully in Xero. Contact Name: Hassan Car Repairs
 [2024-09-05 08:21:55] Customer record successfully updated in Knack (Customers) table. Record ID: 65ad9df3403b150028d61757
+[2024-09-05 08:28:19] Access token retrieved successfully.
+[2024-09-05 08:28:19] Xero tenant ID retrieved: 908cb23f-3bf2-4325-b362-9b95e8d73291
+[2024-09-05 08:28:19] Fetching customer data from Knack API.
+[2024-09-05 08:28:21] Customer data successfully fetched from Knack API.
