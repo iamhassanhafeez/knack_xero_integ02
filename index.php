@@ -59,6 +59,9 @@ $app_id = '64ec0e7df4070c0028ff4a07';
                 'code' => $_GET['code']
             ]);
 
+            // Log the successful token retrieval
+            logMessage("Access token retrieved successfully.");
+
             // We have an access token, which we may use in authenticated requests 
             // Retrieve the array of connected orgs and their tenant ids.      
             $options['headers']['Accept'] = 'application/json';
@@ -74,6 +77,8 @@ $app_id = '64ec0e7df4070c0028ff4a07';
             
             $tenantID = $xeroTenantIdArray[0]['tenantId'];
 
+            // Log the tenant ID
+            logMessage("Xero tenant ID retrieved: $tenantID");
 
             echo '<h3 class="success" style="color:#ff0000; cursor:pointer;">>> Connected Successfully - Click to toggle info visibility.</h1>';
             echo '<div class="raw_connection_info" style="color:#c40233;">';
@@ -99,6 +104,10 @@ $app_id = '64ec0e7df4070c0028ff4a07';
             var_export($provider->getParsedResponse($request));
             echo '</textarea>';
         } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
+
+            // Log the exception message
+            logMessage("Error retrieving access token or user details: " . $e->getMessage());
+
             // Failed to get the access token or user details.
             exit($e->getMessage());
         }
@@ -115,19 +124,22 @@ echo "</pre>";
 
 //=================== Create Customer in Xero
 create_or_update_customer_in_xero($knack_customers_data, $tenantID, $provider, $accessToken);
-// try{
-// create_customer_in_xero($knack_customers_data, $tenantID, $provider, $accessToken);
-// }
-// catch (IdentityProviderException $e) {
-//     // Handle exceptions
-//     exit('Error: ' . $e->getMessage());
-// }
+
 
 
 
 //=========================>>>>>>>>>>> DEFINE FUNCTIONALITY <<<<<<<<<<<<============================================
 //==================================================================================================================
-//================================================================================================================//
+
+// Function to log messages to a file
+function logMessage($message) {
+    $logFile = 'app-logs.log'; // Path to your log file
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($logFile, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
+}
+
+
+//============================================== Fetch Customers from Knack DB ==================================================================//
 function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id){
     // Filter criteria to check if field_225 is not blank
     $filter_criteria = [
@@ -152,6 +164,9 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id){
         'Content-Type: application/json'
 
     ));
+
+    // Log the start of the request
+    logMessage("Fetching customer data from Knack API.");
 
     // Execute the request - 
     $response = curl_exec($ch);
@@ -178,6 +193,9 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id){
     // Check if records exist
     if (isset($data['records']) && is_array($data['records'])) {
         
+        // Log the successful fetch of customer data
+        logMessage("Customer data successfully fetched from Knack API.");
+
         echo '<h3 style="color:#800080;">>> Fetching Customers Details</h3>';
         
         // Display the data
@@ -250,15 +268,23 @@ function search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $acc
     ];
     
     $searchUrl = 'https://api.xero.com/api.xro/2.0/Contacts';
+
+    try{
     $searchResponse = $provider->getAuthenticatedRequest('GET', $searchUrl, $accessToken, $options);
     $searchData = $provider->getParsedResponse($searchResponse);
 
-    foreach ($searchData['Contacts'] as $contact) {
-        if (isset($contact['ContactNumber']) && $contact['ContactNumber'] === $xeroCustomerNumber) {
-            return $contact['ContactID']; // Return the Contact ID if matched
+        foreach ($searchData['Contacts'] as $contact) {
+            if (isset($contact['ContactNumber']) && $contact['ContactNumber'] === $xeroCustomerNumber) {
+                return $contact['ContactID']; // Return the Contact ID if matched
+            }
+
         }
     }
-    
+    catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
+        logMessage("Error searching customer in Xero: " . $e->getMessage());
+        exit('Error searching customer in Xero: ' . $e->getMessage());
+    }
+
     return null; // Return null if no match is found
 }
 
@@ -302,8 +328,14 @@ function update_customer_in_xero($contactId, $customer, $tenantID, $provider, $a
     try {
         $request = $provider->getAuthenticatedRequest('PUT', $updateUrl, $accessToken, $options);
         $response = $provider->getParsedResponse($request);
-        echo '<h3 style="color:#8bbe1b;">Customer updated successfully in Xero</h3>';
+          if ($response['Status'] === 'OK') {
+            logMessage("Customer updated successfully in Xero. ContactID: $contactId");
+            echo '<h3 style="color:#8bbe1b;">Customer updated successfully in Xero</h3>';
+        } else {
+            echo '<pre>' . print_r($response, true) . '</pre>';
+        }
     } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
+        logMessage("Error updating customer in Xero: " . $e->getMessage());
         exit('Error updating customer: ' . $e->getMessage());
     }
 }
@@ -348,11 +380,13 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
         $request = $provider->getAuthenticatedRequest('POST', $createUrl, $accessToken, $options);
         $response = $provider->getParsedResponse($request);
         if ($response['Status'] == 'OK') {
+            logMessage("Customer created successfully in Xero. ContactID: " . $response['ContactID']);
             echo '<h3 style="color:#8bbe1b;">Customer created successfully in Xero</h3>';
         } else {
             echo '<pre>' . print_r($response, true) . '</pre>';
         }
     } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
+        logMessage("Error creating customer in Xero: " . $e->getMessage());
         exit('Error creating customer: ' . $e->getMessage());
     }
 }
