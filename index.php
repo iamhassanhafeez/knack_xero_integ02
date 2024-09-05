@@ -391,35 +391,41 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
     }
 }
 
-?>
+?> <html>
 
-<html>
 <head>
-	<title>Create Customers in Xero - Seatbelts4u</title>
+    <title>Create Customers in Xero - Seatbelts4u</title>
     <style>
-        textarea { border:1px solid #999999;  width:75%; height: 75%;  margin:5px 0; padding:3px;  }
-        body{width:60%; overflow:scroll;}
+    textarea {
+        border: 1px solid #999999;
+        width: 75%;
+        height: 75%;
+        margin: 5px 0;
+        padding: 3px;
+    }
+
+    body {
+        width: 60%;
+        overflow: scroll;
+    }
     </style>
 </head>
+
 <body>
-
-<div class="raw-contacts-info-con"><h3 style="color:#8b008b;">>> Raw Data for identification</h3></div>
-
-<script src="jquery-3.7.1.min.js"></script>
-<script type="text/javascript">
-jQuery(document).ready(function($){
-
-    $('.raw_connection_info').slideUp();
-    $('.success').click(function(){
-
-    $('.raw_connection_info').slideToggle('slow');
-
+    <div class="raw-contacts-info-con">
+        <h3 style="color:#8b008b;">>> Raw Data for identification</h3>
+    </div>
+    <script src="jquery-3.7.1.min.js"></script>
+    <script type="text/javascript">
+    jQuery(document).ready(function($) {
+        $('.raw_connection_info').slideUp();
+        $('.success').click(function() {
+            $('.raw_connection_info').slideToggle('slow');
+        });
+        //place raw contacts info at bottom
+        $('.raw-contacts-info-con').append($('.raw-contacts-info'));
     });
-
-    //place raw contacts info at bottom
-    $('.raw-contacts-info-con').append($('.raw-contacts-info'));
-});
-</script>
-
+    </script>
 </body>
+
 </html>
