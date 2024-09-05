@@ -244,14 +244,50 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id){
     return $knack_customers;
 }
 
-function update_knack_record ($CustomersTableEndPoint, $api_key, $app_id){
-    $filter_criteria = [
-        'match' => 'and',
-        'rules' => [
-            'field' => '',
-            'operator' => 'is equal'
-        ]
-    ];
+function update_knack_record ($knackRecordID, $CustomersTableEndPoint, $api_key, $app_id){
+
+// Define the record ID and the fields to update
+$knackRecordID = '58643557d1ea9432222f3cbb'; // Replace with your actual record ID
+$field225Value = 'New Value for Field 225'; // Replace with the new value for field_225
+$field326Value = 'New Value for Field 326'; // Replace with the new value for field_326
+
+// Define the URL for the API request
+// $CustomersTableEndPoint is "https://api.knack.com/v1/objects/object_1/records"
+$url = $CustomersTableEndPoint.'/'.$knackRecordID;
+
+// Define the data to be sent
+$data = [
+    'field_225' => $field225Value,
+    'field_326' => $field326Value
+];
+
+// Initialize cURL
+$ch = curl_init($url);
+
+// Set cURL options
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "X-Knack-Application-Id: $app_id",
+    "X-Knack-REST-API-Key: $api_key",
+    "Content-Type: application/json"
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+// Execute the request
+$response = curl_exec($ch);
+
+// Check for errors
+if (curl_errno($ch)) {
+    echo 'Error:' . curl_error($ch);
+} else {
+    echo 'Response:' . $response;
+}
+
+// Close cURL
+curl_close($ch);
+
+
 
 }
 
