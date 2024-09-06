@@ -207,6 +207,8 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id)
         // Check if records exist
         if (isset($data['records']) && is_array($data['records'])) {
             $all_records = array_merge($all_records, $data['records']);
+            logMessage("Successfully fetched customers fron Knack DB for page: $page");
+
             $page++;
         } else {
             break; // Exit loop if no more records
@@ -334,7 +336,7 @@ function create_or_update_customer_in_xero($knack_customers_data, $tenantID, $pr
         $xeroCustomerNumber = $customer['xeroCustomerNumber']; // Assuming the customer number is at index 4
         // Check if the customer already exists in Xero
         $existingCustomerId = search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $accessToken);
-
+        echo $existingCustomerId;
         if ($existingCustomerId) {
             // If customer exists, update it
             update_customer_in_xero($existingCustomerId, $customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id);
@@ -353,16 +355,22 @@ function search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $acc
             'Accept' => 'application/json'
         ]
     ];
-
-    $searchUrl = 'https://api.xero.com/api.xro/2.0/Contacts';
+    $searchUrl = 'https://api.xero.com/api.xro/2.0/Contacts?where=AccountNumber=' . '"' . $xeroCustomerNumber . '"';
+    echo $searchUrl;
 
     try {
         $searchResponse = $provider->getAuthenticatedRequest('GET', $searchUrl, $accessToken, $options);
         $searchData = $provider->getParsedResponse($searchResponse);
 
-        foreach ($searchData['Contacts'] as $contact) {
-            if (isset($contact['ContactNumber']) && $contact['ContactNumber'] === $xeroCustomerNumber) {
-                return $contact['ContactID']; // Return the Contact ID if matched
+        echo "<pre>";
+        print_r($searchData);
+        echo "</pre>";
+
+        if (!empty($searchData['Contacts'])) {
+            foreach ($searchData['Contacts'] as $contact) {
+                if (isset($contact['AccountNumber']) && $contact['AccountNumber'] === $xeroCustomerNumber) {
+                    return $contact['ContactID']; // Return the Contact ID if matched
+                }
             }
         }
     } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
@@ -414,7 +422,7 @@ function update_customer_in_xero($contactId, $customer, $tenantID, $provider, $a
     try {
         $request = $provider->getAuthenticatedRequest('PUT', $updateUrl, $accessToken, $options);
         $response = $provider->getParsedResponse($request);
-        if ($response['Status'] === 'OK') {
+        if (isset($response['Status']) && $response['Status'] === 'OK') {
             logMessage("Customer updated successfully in Xero. ContactID: $contactId");
             echo '<h3 style="color:#8bbe1b;">Customer updated successfully in Xero</h3>';
 
