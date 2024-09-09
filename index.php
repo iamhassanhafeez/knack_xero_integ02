@@ -282,7 +282,7 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id)
     return $knack_customers;
 }
 
-function update_knack_record($xeroAccountNumber, $customer, $CustomersTableEndPoint, $api_key, $app_id)
+function update_knack_record($xeroAccountNumber, $XeroContactID, $customer, $CustomersTableEndPoint, $api_key, $app_id)
 {
 
     // Define the record ID and the fields to update
@@ -295,7 +295,8 @@ function update_knack_record($xeroAccountNumber, $customer, $CustomersTableEndPo
     // Define the data to be sent
     $data = [
         'field_225' => $xeroLastUpdated,
-        'field_326' => $xeroAccountNumber
+        'field_326' => $xeroAccountNumber,
+        'field_381' => $XeroContactID
     ];
 
     // Initialize cURL
@@ -320,7 +321,7 @@ function update_knack_record($xeroAccountNumber, $customer, $CustomersTableEndPo
     } else {
         // Log the successful fetch of customer data
         logMessage("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
-        echo ("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
+        echo ("<br/>Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
     }
 
     // Close cURL
@@ -333,15 +334,20 @@ function create_or_update_customer_in_xero($knack_customers_data, $tenantID, $pr
 {
     // Prepare the customer data from Knack
     foreach ($knack_customers_data as $customer) {
-        $xeroCustomerNumber = $customer['xeroCustomerNumber']; // Assuming the customer number is at index 4
+        $xeroCustomerNumber = $customer['xeroCustomerNumber'];
+
         // Check if the customer already exists in Xero
         $existingCustomerId = search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $accessToken);
-        echo $existingCustomerId;
+
         if ($existingCustomerId) {
+            echo "<br/>Customer found in Xero";
             // If customer exists, update it
+            echo "<br/>Started Updating Customer in Xero";
             update_customer_in_xero($existingCustomerId, $customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id);
         } else {
+
             // If customer does not exist, create a new one
+            echo "<br/>Started creating customer in Xero";
             create_customer_in_xero_entry($customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id);
         }
     }
@@ -387,22 +393,27 @@ function update_customer_in_xero($contactId, $customer, $tenantID, $provider, $a
         'Contacts' => [
             [
                 'ContactID' => $contactId,
-                'Name' => $customer['companyName'], // Company Name
-                'EmailAddress' => 'example@example.com', // Update with actual email
+                'Name' => $customer['companyName'],
+                'EmailAddress' => $customer['billingEmail'],
+                'AccountNumber' => $customer['xeroCustomerNumber'],
                 'Phones' => [
                     [
                         'PhoneType' => 'MOBILE',
-                        'PhoneNumber' => '1234567890' // Update with actual phone number
+                        'PhoneNumber' => $customer['billingPhone']
                     ]
                 ],
                 'Addresses' => [
                     [
                         'AddressType' => 'STREET',
-                        'AddressLine1' => '123 Elm Street',
-                        'City' => 'Springfield',
-                        'Region' => 'IL',
-                        'PostalCode' => '62701',
-                        'Country' => 'USA'
+                        'AddressLine1' => $customer['address'],
+                        'City' => $customer['suburb'],
+                        'Region' => $customer['city'],
+                        'PostalCode' => $customer['postCode'],
+                        'Country' => $customer['country'] ?? 'New Zealand'
+                    ],
+                    [
+                        'AddressType' => 'STREET',
+                        'AddressLine1' => $customer['address2']
                     ]
                 ]
             ]
@@ -427,9 +438,12 @@ function update_customer_in_xero($contactId, $customer, $tenantID, $provider, $a
             echo '<h3 style="color:#8bbe1b;">Customer updated successfully in Xero</h3>';
 
             //Update record back in Knack
-            $xeroAccountNumber = $response['Contacts'][0]['ContactID'];
-            update_knack_record($xeroAccountNumber, $customer, $CustomersTableEndPoint, $api_key, $app_id);
+            $xeroAccountNumber = $response['Contacts'][0]['AccountNumber'];
+            $XeroContactID = $response['Contacts'][0]['ContactID'];
+            update_knack_record($xeroAccountNumber, $XeroContactID, $customer, $CustomersTableEndPoint, $api_key, $app_id);
         } else {
+            echo 'Customer could not be updated either the record is already the latest in Xero or the input data is not valid. See the respoonse below for more info.';
+            echo '<br/>';
             echo '<pre>' . print_r($response, true) . '</pre>';
         }
     } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
@@ -444,21 +458,26 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
         'Contacts' => [
             [
                 'Name' => $customer['companyName'],
-                'EmailAddress' => 'example@example.com', // Set default or actual email
+                'EmailAddress' => $customer['billingEmail'],
+                'AccountNumber' => $customer['xeroCustomerNumber'],
                 'Phones' => [
                     [
                         'PhoneType' => 'MOBILE',
-                        'PhoneNumber' => '1234567890' // Set default or actual phone number
+                        'PhoneNumber' => $customer['billingPhone']
                     ]
                 ],
                 'Addresses' => [
                     [
                         'AddressType' => 'STREET',
-                        'AddressLine1' => '123 Elm Street',
-                        'City' => 'Springfield',
-                        'Region' => 'IL',
-                        'PostalCode' => '62701',
-                        'Country' => 'USA'
+                        'AddressLine1' => $customer['address'],
+                        'City' => $customer['suburb'],
+                        'Region' => $customer['city'],
+                        'PostalCode' => $customer['postCode'],
+                        'Country' => $customer['country'] ?? 'New Zealand'
+                    ],
+                    [
+                        'AddressType' => 'STREET',
+                        'AddressLine1' => $customer['address2']
                     ]
                 ]
             ]
@@ -484,10 +503,12 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
             echo "<h3 style='color:#8bbe1b;'>Customer created successfully in Xero</h3> Contact Name: $contactName";
 
             //Update record back in Knack
-            $xeroAccountNumber = $response['Contacts'][0]['ContactID'];
-            update_knack_record($xeroAccountNumber, $customer, $CustomersTableEndPoint, $api_key, $app_id);
+            $xeroAccountNumber = $response['Contacts'][0]['AccountNumber'];
+            $XeroContactID = $response['Contacts'][0]['ContactID'];
+            update_knack_record($xeroAccountNumber, $XeroContactID, $customer, $CustomersTableEndPoint, $api_key, $app_id);
         } else {
-            echo 'Customer status not found in the response or error creating customer inXero. <br/><pre>' . print_r($response, true) . '</pre>';
+            echo 'Customer could not be created in Xero. Either the server is down or the input data is not valid. See the respoonse below for more info.';
+            echo '<br/><pre>' . print_r($response, true) . '</pre>';
         }
     } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
         logMessage("Error creating customer in Xero: " . $e->getMessage());
@@ -500,18 +521,18 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
 <head>
     <title>Create Customers in Xero - Seatbelts4u</title>
     <style>
-    textarea {
-        border: 1px solid #999999;
-        width: 75%;
-        height: 75%;
-        margin: 5px 0;
-        padding: 3px;
-    }
+        textarea {
+            border: 1px solid #999999;
+            width: 75%;
+            height: 75%;
+            margin: 5px 0;
+            padding: 3px;
+        }
 
-    body {
-        width: 60%;
-        overflow: scroll;
-    }
+        body {
+            width: 60%;
+            overflow: scroll;
+        }
     </style>
 </head>
 
@@ -521,14 +542,14 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
     </div>
     <script src="jquery-3.7.1.min.js"></script>
     <script type="text/javascript">
-    jQuery(document).ready(function($) {
-        $('.raw_connection_info').slideUp();
-        $('.success').click(function() {
-            $('.raw_connection_info').slideToggle('slow');
+        jQuery(document).ready(function($) {
+            $('.raw_connection_info').slideUp();
+            $('.success').click(function() {
+                $('.raw_connection_info').slideToggle('slow');
+            });
+            //place raw contacts info at bottom
+            $('.raw-contacts-info-con').append($('.raw-contacts-info'));
         });
-        //place raw contacts info at bottom
-        $('.raw-contacts-info-con').append($('.raw-contacts-info'));
-    });
     </script>
 </body>
 
