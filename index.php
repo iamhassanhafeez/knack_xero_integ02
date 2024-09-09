@@ -81,7 +81,7 @@ if (!isset($_GET['code'])) {
         logMessage("Xero tenant ID retrieved: $tenantID");
 
         echo '<h3 class="success" style="color:#ff0000; cursor:pointer;">>> Connected Successfully - Click to toggle info visibility.</h1>';
-        echo '<div class="raw_connection_info" style="color:#c40233;">';
+        echo '<div class="raw_connection_info" style="color:#c40233; display:none;">';
         echo "access token: " . $accessToken->getToken() . "<hr>";
         echo "refresh token: " . $accessToken->getRefreshToken() . "<hr>";
         echo "xero tenant id: " . $tenantID . "<hr>";
@@ -207,7 +207,7 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id)
         // Check if records exist
         if (isset($data['records']) && is_array($data['records'])) {
             $all_records = array_merge($all_records, $data['records']);
-            logMessage("Successfully fetched customers fron Knack DB for page: $page");
+            logMessage("Successfully fetched customers from Knack DB for page: $page");
 
             $page++;
         } else {
@@ -524,35 +524,35 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
 <head>
     <title>Create Customers in Xero - Seatbelts4u</title>
     <style>
-        textarea {
-            border: 1px solid #999999;
-            width: 75%;
-            height: 75%;
-            margin: 5px 0;
-            padding: 3px;
-        }
+    textarea {
+        border: 1px solid #999999;
+        width: 75%;
+        height: 75%;
+        margin: 5px 0;
+        padding: 3px;
+    }
 
-        body {
-            width: 60%;
-            overflow: scroll;
-        }
+    body {
+        width: 60%;
+        overflow: scroll;
+    }
     </style>
 </head>
 
 <body>
-    <div class="raw-contacts-info-con">
-        <h3 style="color:#8b008b;">>> Raw Data for identification</h3>
+    <div class="raw-contacts-info-con" style="display: none;">
+        <h3 style="color:#8b008b;">>> Raw Data for understanding - For Developers</h3>
     </div>
     <script src="jquery-3.7.1.min.js"></script>
     <script type="text/javascript">
-        jQuery(document).ready(function($) {
-            $('.raw_connection_info').slideUp();
-            $('.success').click(function() {
-                $('.raw_connection_info').slideToggle('slow');
-            });
-            //place raw contacts info at bottom
-            $('.raw-contacts-info-con').append($('.raw-contacts-info'));
+    jQuery(document).ready(function($) {
+        $('.raw_connection_info').slideUp();
+        $('.success').click(function() {
+            $('.raw_connection_info').slideToggle('slow');
         });
+        //place raw contacts info at bottom
+        $('.raw-contacts-info-con').append($('.raw-contacts-info'));
+    });
     </script>
 </body>
 
