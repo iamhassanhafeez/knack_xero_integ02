@@ -118,6 +118,10 @@ if (!isset($_GET['code'])) {
 
 //================== Let's fetch customers from Knack and filter on the basis of different fields
 $knack_customers_data = fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id);
+if (empty($knack_customers)) {
+    echo '<br/><h2 style="color:#800080;">Oops: No pending customer found in SeatBelts4u database.</h2>';
+    die;
+}
 echo "<pre>";
 print_r($knack_customers_data);
 echo "</pre>";
