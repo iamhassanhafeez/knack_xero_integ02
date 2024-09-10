@@ -153,16 +153,16 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id)
         'match' => 'and',
         'rules' => [
             [
-                'field' => 'field_225',
+                'field' => 'field_225', // Last xero updated
                 'operator' => 'is blank'
             ],
             [
-                'field' => 'field_186',
+                'field' => 'field_186', // is Active?
                 'operator' => 'is not',
                 'value' => 'no'
             ],
             [
-                'field' => 'field_336',
+                'field' => 'field_336', // excluded from xero
                 'operator' => 'is',
                 'value' => 'no'
             ],
@@ -336,7 +336,7 @@ function update_knack_record($xeroAccountNumber, $XeroContactID, $customer, $Cus
 function create_or_update_customer_in_xero($knack_customers_data, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id)
 {
     // Prepare the customer data from Knack
-    foreach ($knack_customers_data as $customer) {
+    foreach ($knack_customers_data as $customer) { // we have one customer in one iteration
         $xeroCustomerNumber = $customer['xeroCustomerNumber'];
 
         // Check if the customer already exists in Xero
@@ -376,7 +376,7 @@ function search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $acc
         echo "</pre>";
 
         if (!empty($searchData['Contacts'])) {
-            foreach ($searchData['Contacts'] as $contact) {
+            foreach ($searchData['Contacts'] as $contact) { // single contact returned on the basis of single customer data we passed for search
                 if (isset($contact['AccountNumber']) && $contact['AccountNumber'] === $xeroCustomerNumber) {
                     return $contact['ContactID']; // Return the Contact ID if matched
                 }
@@ -434,7 +434,7 @@ function update_customer_in_xero($contactId, $customer, $tenantID, $provider, $a
 
     $updateUrl = 'https://api.xero.com/api.xro/2.0/Contacts';
     try {
-        $request = $provider->getAuthenticatedRequest('PUT', $updateUrl, $accessToken, $options);
+        $request = $provider->getAuthenticatedRequest('POST', $updateUrl, $accessToken, $options);
         $response = $provider->getParsedResponse($request);
         if (isset($response['Status']) && $response['Status'] === 'OK') {
             logMessage("Customer updated successfully in Xero. ContactID: $contactId");
