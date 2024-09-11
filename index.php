@@ -282,9 +282,9 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id)
         die('<br/><h2 style="color:#800080;">Oops: No pending customer found in SeatBelts4u database.</h2>');
     }
     echo '<br/><div class="raw-contacts-info">';
-    echo '<pre>';
-    print_r($all_records);
-    echo '</pre>';
+    // echo '<pre>';
+    // print_r($all_records);
+    // echo '</pre>';
     echo '</div>';
     echo '<br/>';
 
@@ -536,18 +536,18 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
 <head>
     <title>Create Customers in Xero - Seatbelts4u</title>
     <style>
-        textarea {
-            border: 1px solid #999999;
-            width: 75%;
-            height: 75%;
-            margin: 5px 0;
-            padding: 3px;
-        }
+    textarea {
+        border: 1px solid #999999;
+        width: 75%;
+        height: 75%;
+        margin: 5px 0;
+        padding: 3px;
+    }
 
-        body {
-            width: 60%;
-            overflow: scroll;
-        }
+    body {
+        width: 60%;
+        overflow: scroll;
+    }
     </style>
 </head>
 
@@ -557,14 +557,14 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
     </div>
     <script src="jquery-3.7.1.min.js"></script>
     <script type="text/javascript">
-        jQuery(document).ready(function($) {
-            $('.raw_connection_info').slideUp();
-            $('.success').click(function() {
-                $('.raw_connection_info').slideToggle('slow');
-            });
-            //place raw contacts info at bottom
-            $('.raw-contacts-info-con').append($('.raw-contacts-info'));
+    jQuery(document).ready(function($) {
+        $('.raw_connection_info').slideUp();
+        $('.success').click(function() {
+            $('.raw_connection_info').slideToggle('slow');
         });
+        //place raw contacts info at bottom
+        $('.raw-contacts-info-con').append($('.raw-contacts-info'));
+    });
     </script>
 </body>
 
