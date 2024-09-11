@@ -118,9 +118,9 @@ if (!isset($_GET['code'])) {
 
 //================== Let's fetch customers from Knack and filter on the basis of different fields
 $knack_customers_data = fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id);
-echo "<pre>";
-print_r($knack_customers_data);
-echo "</pre>";
+// echo "<pre>";
+// print_r($knack_customers_data);
+// echo "</pre>";
 
 //=================== Create Customer in Xero
 create_or_update_customer_in_xero($knack_customers_data, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id);
@@ -249,14 +249,19 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id)
                 <td>$xeroLastUpdated</td>
                 <td>$xeroCustomerNumber</td>
             </tr>";
-        preg_match_all('/>([^<]+)</', $billingEmail, $filteredEmail);
+
+        //sanitise email address because it contains complete mailto address
+        if (!empty($billingEmail)) {
+            preg_match_all('/>([^<]+)</', $billingEmail, $filteredEmail);
+            $billingEmail = $filteredEmail[1][0];
+        }
 
         $knack_customers[] = [
             'knackRecordID'         => $knackRecordID,
-            'billingFirstName'      =>  $billingFirstName,
+            'billingFirstName'      => $billingFirstName,
             'billingLastName'       => $billingLastName,
             'billingPhone'          => $billingPhone,
-            'billingEmail'          => $filteredEmail[1][0],
+            'billingEmail'          => $billingEmail,
             'customerNumber'        => $customerNumber,
             'companyName'           => $companyName,
             'contactFirstName'      => $contactFirstName,
@@ -325,7 +330,7 @@ function update_knack_record($xeroAccountNumber, $XeroContactID, $customer, $Cus
     } else {
         // Log the successful fetch of customer data
         logMessage("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
-        echo ("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
+        echo ("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID <br/><br/>");
     }
 
     // Close cURL
@@ -366,7 +371,7 @@ function search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $acc
         ]
     ];
     $searchUrl = 'https://api.xero.com/api.xro/2.0/Contacts?where=AccountNumber=' . '"' . $xeroCustomerNumber . '"';
-    echo $searchUrl;
+    //echo $searchUrl;
 
     try {
         $searchResponse = $provider->getAuthenticatedRequest('GET', $searchUrl, $accessToken, $options);
@@ -444,7 +449,7 @@ function update_customer_in_xero($existingCustomer, $customer, $tenantID, $provi
         $response = $provider->getParsedResponse($request);
         if (isset($response['Status']) && $response['Status'] === 'OK') {
             logMessage("Customer updated successfully in Xero. ContactID: $contactId");
-            echo '<h3 style="color:#8bbe1b;">Customer updated successfully in Xero</h3>';
+            echo '<b style="color:#8bbe1b;">Customer updated successfully in Xero</b>';
 
             //Update record back in Knack
             $xeroAccountNumber = $response['Contacts'][0]['AccountNumber'];
