@@ -325,7 +325,7 @@ function update_knack_record($xeroAccountNumber, $XeroContactID, $customer, $Cus
     } else {
         // Log the successful fetch of customer data
         logMessage("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
-        echo ("<br/>Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
+        echo ("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
     }
 
     // Close cURL
@@ -372,9 +372,9 @@ function search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $acc
         $searchResponse = $provider->getAuthenticatedRequest('GET', $searchUrl, $accessToken, $options);
         $searchData = $provider->getParsedResponse($searchResponse);
 
-        echo "<pre>";
-        print_r($searchData);
-        echo "</pre>";
+        // echo "<pre>";
+        // print_r($searchData);
+        // echo "</pre>";
 
         if (!empty($searchData['Contacts'])) {
             foreach ($searchData['Contacts'] as $contact) { // single contact returned on the basis of single customer data we passed for search
@@ -460,105 +460,6 @@ function update_customer_in_xero($existingCustomer, $customer, $tenantID, $provi
         exit('Error updating customer: ' . $e->getMessage());
     }
 }
-
-/*function update_customer_in_xero($existingCustomer, $customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id)
-{
-    // Initialize customerData with the existing contact ID
-    $customerData = [
-        'Contacts' => [
-            [
-                'ContactID' => $existingCustomer['ContactID']
-            ]
-        ]
-    ];
-
-    // Check and update Name if different
-    if (!empty($customer['companyName']) && $customer['companyName'] !== $existingCustomer['Name']) {
-        $customerData['Contacts'][0]['Name'] = $customer['companyName'];
-    } elseif (empty($customer['companyName']) && !empty($existingCustomer['Name'])) {
-        // If companyName is empty, skip updating the Name field
-        unset($customerData['Contacts'][0]['Name']);
-    }
-
-    // Conditionally add other fields if they are different from existing data
-    if (!empty($customer['billingEmail']) && $customer['billingEmail'] !== $existingCustomer['EmailAddress']) {
-        $customerData['Contacts'][0]['EmailAddress'] = $customer['billingEmail'];
-    }
-
-    if (!empty($customer['xeroCustomerNumber']) && $customer['xeroCustomerNumber'] !== $existingCustomer['AccountNumber']) {
-        $customerData['Contacts'][0]['AccountNumber'] = $customer['xeroCustomerNumber'];
-    }
-
-    if (!empty($customer['billingPhone']) && $customer['billingPhone'] !== $existingCustomer['Phones'][0]['PhoneNumber']) {
-        $customerData['Contacts'][0]['Phones'] = [
-            [
-                'PhoneType' => 'MOBILE',
-                'PhoneNumber' => $customer['billingPhone']
-            ]
-        ];
-    }
-
-    // Addresses - handle them as arrays and ensure not to overwrite if unchanged
-    $addressesToUpdate = [];
-    if (!empty($customer['address']) && $customer['address'] !== $existingCustomer['Addresses'][0]['AddressLine1']) {
-        $addressesToUpdate[] = [
-            'AddressType' => 'STREET',
-            'AddressLine1' => $customer['address'],
-            'City' => $customer['suburb'],
-            'Region' => $customer['city'],
-            'PostalCode' => $customer['postCode'],
-            'Country' => $customer['country'] ?? 'New Zealand'
-        ];
-    }
-    if (!empty($customer['address2']) && $customer['address2'] !== $existingCustomer['Addresses'][1]['AddressLine1']) {
-        $addressesToUpdate[] = [
-            'AddressType' => 'STREET',
-            'AddressLine1' => $customer['address2']
-        ];
-    }
-    if (!empty($addressesToUpdate)) {
-        $customerData['Contacts'][0]['Addresses'] = $addressesToUpdate;
-    }
-
-    // Check if there's anything to update
-    if (empty($customerData['Contacts'][0]) || (count($customerData['Contacts'][0]) === 1 && !isset($customerData['Contacts'][0]['Name']))) {
-        echo 'No changes detected or no valid Name provided. No update necessary.';
-        return;
-    }
-
-    $options = [
-        'headers' => [
-            'xero-tenant-id' => $tenantID,
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json'
-        ],
-        'body' => json_encode($customerData)
-    ];
-
-    $updateUrl = 'https://api.xero.com/api.xro/2.0/Contacts';
-    try {
-        $request = $provider->getAuthenticatedRequest('PUT', $updateUrl, $accessToken, $options);
-        $response = $provider->getParsedResponse($request);
-        if (isset($response['Status']) && $response['Status'] === 'OK') {
-            logMessage("Customer updated successfully in Xero. ContactID: {$existingCustomer['ContactID']}");
-            echo '<h3 style="color:#8bbe1b;">Customer updated successfully in Xero</h3>';
-
-            // Update record back in Knack
-            $xeroAccountNumber = $response['Contacts'][0]['AccountNumber'];
-            $XeroContactID = $response['Contacts'][0]['ContactID'];
-            update_knack_record($xeroAccountNumber, $XeroContactID, $customer, $CustomersTableEndPoint, $api_key, $app_id);
-        } else {
-            echo 'Customer could not be updated. See the response below for more info.';
-            echo '<br/>';
-            echo '<pre>' . print_r($response, true) . '</pre>';
-        }
-    } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
-        logMessage("Error updating customer in Xero: " . $e->getMessage());
-        exit('Error updating customer: ' . $e->getMessage());
-    }
-}
-    */
-
 
 
 function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id)
