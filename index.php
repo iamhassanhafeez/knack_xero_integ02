@@ -236,6 +236,7 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id)
         $suburb = $record['field_6'] ?? 'N/A';
         $city = $record['field_7'] ?? 'N/A';
         $postCode = $record['field_8'] ?? 'N/A';
+        $notes = $record['field_9'] ?? 'N/A';
         $xeroAccountNumber = $record['field_4'] ?? 'N/A';
         $xeroLastUpdated = $record['field_225'] ?? 'N/A';
         $xeroCustomerNumber = $record['field_10'] ? 'CUST-' . $record['field_10'] : 'N/A';
@@ -271,8 +272,14 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id)
             'suburb'                => $suburb,
             'city'                  => $city,
             'postCode'              => $postCode,
-            'xeroCustomerNumber'    => $xeroCustomerNumber
+            'xeroCustomerNumber'    => $xeroCustomerNumber,
+            'notes'                 => $notes,
         ];
+
+        // Unset the 'notes' field if it's empty so that zero can create history note it self.
+        if (empty($notes)) {
+            unset($knack_customers['notes']);
+        }
     }
 
     echo "</table>";
@@ -399,10 +406,11 @@ function search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $acc
 
 function update_customer_in_xero($existingCustomer, $customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id)
 {
+    $contactId = $existingCustomer['ContactID'];
     $customerData = [
         'Contacts' => [
             [
-                'ContactID' => $existingCustomer['ContactID'],
+                'ContactID' => $contactId,
                 'Name' => $customer['companyName'],
                 'EmailAddress' => $customer['billingEmail'],
                 'AccountNumber' => $customer['xeroCustomerNumber'],
@@ -430,7 +438,7 @@ function update_customer_in_xero($existingCustomer, $customer, $tenantID, $provi
         ]
     ];
 
-    $contactId = $existingCustomer['ContactID'];
+
     $options = [
         'headers' => [
             'xero-tenant-id' => $tenantID,
@@ -450,6 +458,12 @@ function update_customer_in_xero($existingCustomer, $customer, $tenantID, $provi
         if (isset($response['Status']) && $response['Status'] === 'OK') {
             logMessage("Customer updated successfully in Xero. ContactID: $contactId");
             echo '<b style="color:#8bbe1b;">Customer updated successfully in Xero</b>';
+
+            //Create Customer notes/history in Xero is exists in Knack
+            if ($customer['notes']) {
+                create_history_notes_in_xero($customer, $contactId, $accessToken, $tenantID, $provider);
+                logMessage("Customer note successfully created in Xero. ContactID: $contactId");
+            }
 
             //Update record back in Knack
             $xeroAccountNumber = $response['Contacts'][0]['AccountNumber'];
@@ -514,12 +528,18 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
         $response = $provider->getParsedResponse($request);
         if (isset($response['Status']) && $response['Status'] == 'OK') {
             $contactName = $response['Contacts'][0]['Name'];
+            $xeroAccountNumber = $response['Contacts'][0]['AccountNumber'];
+            $XeroContactID = $response['Contacts'][0]['ContactID'];
+
             logMessage("Customer created successfully in Xero. Contact Name: $contactName");
             echo "<h3 style='color:#8bbe1b;'>Customer created successfully in Xero</h3> Contact Name: $contactName";
 
+            //Create Customer notes/history in Xero is exists in Knack
+            if ($customer['notes']) {
+                create_history_notes_in_xero($customer, $XeroContactID, $accessToken, $tenantID, $provider);
+                logMessage("Customer note successfully created in Xero. ContactID: $XeroContactID");
+            }
             //Update record back in Knack
-            $xeroAccountNumber = $response['Contacts'][0]['AccountNumber'];
-            $XeroContactID = $response['Contacts'][0]['ContactID'];
             update_knack_record($xeroAccountNumber, $XeroContactID, $customer, $CustomersTableEndPoint, $api_key, $app_id);
         } else {
             echo 'Customer could not be created in Xero. Either the server is down or the input data is not valid. See the respoonse below for more info.';
@@ -531,23 +551,49 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
     }
 }
 
+function create_history_notes_in_xero($customer, $contactId, $accessToken, $tenantID, $provider)
+{
+    //Create customer history notes in Xero
+
+    $HistoryNotes = [
+        'HistoryRecords' => [
+            [
+                'Details' => $customer['notes']
+            ]
+        ]
+    ];
+    $HistoryUrl = "https://api.xero.com/api.xro/2.0/Contacts/$contactId/History";
+    $options = [
+        'headers' => [
+            'xero-tenant-id' => $tenantID,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json'
+        ],
+        'body' => json_encode($HistoryNotes)
+    ];
+
+    $request = $provider->getAuthenticatedRequest('POST', $HistoryUrl, $accessToken, $options);
+    $response = $provider->getParsedResponse($request);
+    return $response;
+}
+
 ?> <html>
 
 <head>
     <title>Create Customers in Xero - Seatbelts4u</title>
     <style>
-    textarea {
-        border: 1px solid #999999;
-        width: 75%;
-        height: 75%;
-        margin: 5px 0;
-        padding: 3px;
-    }
+        textarea {
+            border: 1px solid #999999;
+            width: 75%;
+            height: 75%;
+            margin: 5px 0;
+            padding: 3px;
+        }
 
-    body {
-        width: 60%;
-        overflow: scroll;
-    }
+        body {
+            width: 60%;
+            overflow: scroll;
+        }
     </style>
 </head>
 
@@ -557,14 +603,14 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
     </div>
     <script src="jquery-3.7.1.min.js"></script>
     <script type="text/javascript">
-    jQuery(document).ready(function($) {
-        $('.raw_connection_info').slideUp();
-        $('.success').click(function() {
-            $('.raw_connection_info').slideToggle('slow');
+        jQuery(document).ready(function($) {
+            $('.raw_connection_info').slideUp();
+            $('.success').click(function() {
+                $('.raw_connection_info').slideToggle('slow');
+            });
+            //place raw contacts info at bottom
+            $('.raw-contacts-info-con').append($('.raw-contacts-info'));
         });
-        //place raw contacts info at bottom
-        $('.raw-contacts-info-con').append($('.raw-contacts-info'));
-    });
     </script>
 </body>
 
