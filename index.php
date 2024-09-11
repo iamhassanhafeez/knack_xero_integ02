@@ -249,13 +249,14 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id)
                 <td>$xeroLastUpdated</td>
                 <td>$xeroCustomerNumber</td>
             </tr>";
+        preg_match_all('/>([^<]+)</', $billingEmail, $filteredEmail);
 
         $knack_customers[] = [
             'knackRecordID'         => $knackRecordID,
             'billingFirstName'      =>  $billingFirstName,
             'billingLastName'       => $billingLastName,
             'billingPhone'          => $billingPhone,
-            'billingEmail'          => $billingEmail,
+            'billingEmail'          => $filteredEmail[1][0],
             'customerNumber'        => $customerNumber,
             'companyName'           => $companyName,
             'contactFirstName'      => $contactFirstName,
@@ -340,13 +341,13 @@ function create_or_update_customer_in_xero($knack_customers_data, $tenantID, $pr
         $xeroCustomerNumber = $customer['xeroCustomerNumber'];
 
         // Check if the customer already exists in Xero
-        $existingCustomerId = search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $accessToken);
+        $existingCustomer = search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $accessToken);
 
-        if ($existingCustomerId) {
+        if ($existingCustomer) {
             echo "<br/>Customer found in Xero";
             // If customer exists, update it
             echo "<br/>Started Updating Customer in Xero";
-            update_customer_in_xero($existingCustomerId, $customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id);
+            update_customer_in_xero($existingCustomer, $customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id);
         } else {
 
             // If customer does not exist, create a new one
@@ -378,7 +379,7 @@ function search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $acc
         if (!empty($searchData['Contacts'])) {
             foreach ($searchData['Contacts'] as $contact) { // single contact returned on the basis of single customer data we passed for search
                 if (isset($contact['AccountNumber']) && $contact['AccountNumber'] === $xeroCustomerNumber) {
-                    return $contact['ContactID']; // Return the Contact ID if matched
+                    return $contact; // Return the Contact ID if matched
                 }
             }
         }
@@ -390,12 +391,13 @@ function search_customer_in_xero($xeroCustomerNumber, $tenantID, $provider, $acc
     return null; // Return null if no match is found
 }
 
-function update_customer_in_xero($contactId, $customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id)
+
+function update_customer_in_xero($existingCustomer, $customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id)
 {
     $customerData = [
         'Contacts' => [
             [
-                'ContactID' => $contactId,
+                'ContactID' => $existingCustomer['ContactID'],
                 'Name' => $customer['companyName'],
                 'EmailAddress' => $customer['billingEmail'],
                 'AccountNumber' => $customer['xeroCustomerNumber'],
@@ -423,6 +425,7 @@ function update_customer_in_xero($contactId, $customer, $tenantID, $provider, $a
         ]
     ];
 
+    $contactId = $existingCustomer['ContactID'];
     $options = [
         'headers' => [
             'xero-tenant-id' => $tenantID,
@@ -432,7 +435,10 @@ function update_customer_in_xero($contactId, $customer, $tenantID, $provider, $a
         'body' => json_encode($customerData)
     ];
 
-    $updateUrl = 'https://api.xero.com/api.xro/2.0/Contacts';
+    // echo '<pre>';
+    // print_r(json_encode($customerData));
+    // echo '</pre>';
+    $updateUrl = "https://api.xero.com/api.xro/2.0/Contacts/$contactId";
     try {
         $request = $provider->getAuthenticatedRequest('POST', $updateUrl, $accessToken, $options);
         $response = $provider->getParsedResponse($request);
@@ -454,6 +460,106 @@ function update_customer_in_xero($contactId, $customer, $tenantID, $provider, $a
         exit('Error updating customer: ' . $e->getMessage());
     }
 }
+
+/*function update_customer_in_xero($existingCustomer, $customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id)
+{
+    // Initialize customerData with the existing contact ID
+    $customerData = [
+        'Contacts' => [
+            [
+                'ContactID' => $existingCustomer['ContactID']
+            ]
+        ]
+    ];
+
+    // Check and update Name if different
+    if (!empty($customer['companyName']) && $customer['companyName'] !== $existingCustomer['Name']) {
+        $customerData['Contacts'][0]['Name'] = $customer['companyName'];
+    } elseif (empty($customer['companyName']) && !empty($existingCustomer['Name'])) {
+        // If companyName is empty, skip updating the Name field
+        unset($customerData['Contacts'][0]['Name']);
+    }
+
+    // Conditionally add other fields if they are different from existing data
+    if (!empty($customer['billingEmail']) && $customer['billingEmail'] !== $existingCustomer['EmailAddress']) {
+        $customerData['Contacts'][0]['EmailAddress'] = $customer['billingEmail'];
+    }
+
+    if (!empty($customer['xeroCustomerNumber']) && $customer['xeroCustomerNumber'] !== $existingCustomer['AccountNumber']) {
+        $customerData['Contacts'][0]['AccountNumber'] = $customer['xeroCustomerNumber'];
+    }
+
+    if (!empty($customer['billingPhone']) && $customer['billingPhone'] !== $existingCustomer['Phones'][0]['PhoneNumber']) {
+        $customerData['Contacts'][0]['Phones'] = [
+            [
+                'PhoneType' => 'MOBILE',
+                'PhoneNumber' => $customer['billingPhone']
+            ]
+        ];
+    }
+
+    // Addresses - handle them as arrays and ensure not to overwrite if unchanged
+    $addressesToUpdate = [];
+    if (!empty($customer['address']) && $customer['address'] !== $existingCustomer['Addresses'][0]['AddressLine1']) {
+        $addressesToUpdate[] = [
+            'AddressType' => 'STREET',
+            'AddressLine1' => $customer['address'],
+            'City' => $customer['suburb'],
+            'Region' => $customer['city'],
+            'PostalCode' => $customer['postCode'],
+            'Country' => $customer['country'] ?? 'New Zealand'
+        ];
+    }
+    if (!empty($customer['address2']) && $customer['address2'] !== $existingCustomer['Addresses'][1]['AddressLine1']) {
+        $addressesToUpdate[] = [
+            'AddressType' => 'STREET',
+            'AddressLine1' => $customer['address2']
+        ];
+    }
+    if (!empty($addressesToUpdate)) {
+        $customerData['Contacts'][0]['Addresses'] = $addressesToUpdate;
+    }
+
+    // Check if there's anything to update
+    if (empty($customerData['Contacts'][0]) || (count($customerData['Contacts'][0]) === 1 && !isset($customerData['Contacts'][0]['Name']))) {
+        echo 'No changes detected or no valid Name provided. No update necessary.';
+        return;
+    }
+
+    $options = [
+        'headers' => [
+            'xero-tenant-id' => $tenantID,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json'
+        ],
+        'body' => json_encode($customerData)
+    ];
+
+    $updateUrl = 'https://api.xero.com/api.xro/2.0/Contacts';
+    try {
+        $request = $provider->getAuthenticatedRequest('PUT', $updateUrl, $accessToken, $options);
+        $response = $provider->getParsedResponse($request);
+        if (isset($response['Status']) && $response['Status'] === 'OK') {
+            logMessage("Customer updated successfully in Xero. ContactID: {$existingCustomer['ContactID']}");
+            echo '<h3 style="color:#8bbe1b;">Customer updated successfully in Xero</h3>';
+
+            // Update record back in Knack
+            $xeroAccountNumber = $response['Contacts'][0]['AccountNumber'];
+            $XeroContactID = $response['Contacts'][0]['ContactID'];
+            update_knack_record($xeroAccountNumber, $XeroContactID, $customer, $CustomersTableEndPoint, $api_key, $app_id);
+        } else {
+            echo 'Customer could not be updated. See the response below for more info.';
+            echo '<br/>';
+            echo '<pre>' . print_r($response, true) . '</pre>';
+        }
+    } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
+        logMessage("Error updating customer in Xero: " . $e->getMessage());
+        exit('Error updating customer: ' . $e->getMessage());
+    }
+}
+    */
+
+
 
 function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessToken, $CustomersTableEndPoint, $api_key, $app_id)
 {
@@ -524,18 +630,18 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
 <head>
     <title>Create Customers in Xero - Seatbelts4u</title>
     <style>
-    textarea {
-        border: 1px solid #999999;
-        width: 75%;
-        height: 75%;
-        margin: 5px 0;
-        padding: 3px;
-    }
+        textarea {
+            border: 1px solid #999999;
+            width: 75%;
+            height: 75%;
+            margin: 5px 0;
+            padding: 3px;
+        }
 
-    body {
-        width: 60%;
-        overflow: scroll;
-    }
+        body {
+            width: 60%;
+            overflow: scroll;
+        }
     </style>
 </head>
 
@@ -545,14 +651,14 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
     </div>
     <script src="jquery-3.7.1.min.js"></script>
     <script type="text/javascript">
-    jQuery(document).ready(function($) {
-        $('.raw_connection_info').slideUp();
-        $('.success').click(function() {
-            $('.raw_connection_info').slideToggle('slow');
+        jQuery(document).ready(function($) {
+            $('.raw_connection_info').slideUp();
+            $('.success').click(function() {
+                $('.raw_connection_info').slideToggle('slow');
+            });
+            //place raw contacts info at bottom
+            $('.raw-contacts-info-con').append($('.raw-contacts-info'));
         });
-        //place raw contacts info at bottom
-        $('.raw-contacts-info-con').append($('.raw-contacts-info'));
-    });
     </script>
 </body>
 
