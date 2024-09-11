@@ -572,7 +572,7 @@ function create_history_notes_in_xero($customer, $contactId, $accessToken, $tena
         'body' => json_encode($HistoryNotes)
     ];
 
-    $request = $provider->getAuthenticatedRequest('POST', $HistoryUrl, $accessToken, $options);
+    $request = $provider->getAuthenticatedRequest('PUT', $HistoryUrl, $accessToken, $options);
     $response = $provider->getParsedResponse($request);
     return $response;
 }
