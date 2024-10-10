@@ -237,7 +237,7 @@ function fetch_customers_from_knack($CustomersTableEndPoint, $api_key, $app_id)
         $city = $record['field_7'] ?? 'N/A';
         $postCode = $record['field_8'] ?? 'N/A';
         $notes = $record['field_9'] ?? 'N/A';
-        $xeroAccountNumber = $record['field_4'] ?? 'N/A';
+        $xeroAccountNumber = $record['field_326'] ?? 'N/A';
         $xeroLastUpdated = $record['field_225'] ?? 'N/A';
         $xeroCustomerNumber = $record['field_10'] ? 'CUST-' . $record['field_10'] : 'N/A';
 
@@ -337,7 +337,7 @@ function update_knack_record($xeroAccountNumber, $XeroContactID, $customer, $Cus
     } else {
         // Log the successful fetch of customer data
         logMessage("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
-        echo ("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID <br/><br/>");
+        echo ("<br/>Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID <br/><br/>");
     }
 
     // Close cURL
@@ -412,6 +412,8 @@ function update_customer_in_xero($existingCustomer, $customer, $tenantID, $provi
             [
                 'ContactID' => $contactId,
                 'Name' => $customer['companyName'],
+                'FirstName' => $customer['contactFirstName'],
+                'LastName' => $customer['contactLastname'],
                 'EmailAddress' => $customer['billingEmail'],
                 'AccountNumber' => $customer['xeroCustomerNumber'],
                 'Phones' => [
@@ -457,7 +459,7 @@ function update_customer_in_xero($existingCustomer, $customer, $tenantID, $provi
         $response = $provider->getParsedResponse($request);
         if (isset($response['Status']) && $response['Status'] === 'OK') {
             logMessage("Customer updated successfully in Xero. ContactID: $contactId");
-            echo '<b style="color:#8bbe1b;">Customer updated successfully in Xero</b>';
+            echo '<b style="color:#8bbe1b;"><br/>Customer updated successfully in Xero</b>';
 
             //Create Customer notes/history in Xero is exists in Knack
             if ($customer['notes']) {
@@ -487,6 +489,8 @@ function create_customer_in_xero_entry($customer, $tenantID, $provider, $accessT
         'Contacts' => [
             [
                 'Name' => $customer['companyName'],
+                'FirstName' => $customer['contactFirstName'],
+                'LastName' => $customer['contactLastname'],
                 'EmailAddress' => $customer['billingEmail'],
                 'AccountNumber' => $customer['xeroCustomerNumber'],
                 'Phones' => [
