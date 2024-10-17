@@ -312,7 +312,7 @@ function update_knack_record($xeroAccountNumber, $XeroContactID, $customer, $Cus
     $data = [
         'field_225' => $xeroLastUpdated,
         'field_326' => $xeroAccountNumber,
-        'field_381' => $XeroContactID
+        'field_382' => $XeroContactID
     ];
 
     // Initialize cURL
