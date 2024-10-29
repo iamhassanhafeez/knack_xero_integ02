@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => '__root__',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => '7afbbd467af8416bd3260623104257b08a979e44',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,9 +11,9 @@
     ),
     'versions' => array(
         '__root__' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => '7afbbd467af8416bd3260623104257b08a979e44',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -38,9 +38,9 @@
             'dev_requirement' => false,
         ),
         'guzzlehttp/promises' => array(
-            'pretty_version' => '2.0.3',
-            'version' => '2.0.3.0',
-            'reference' => '6ea8dd08867a2a42619d65c3deb2c0fcbf81c8f8',
+            'pretty_version' => '2.0.4',
+            'version' => '2.0.4.0',
+            'reference' => 'f9c436286ab2892c7db7be8c8da4ef61ccf7b455',
             'type' => 'library',
             'install_path' => __DIR__ . '/../guzzlehttp/promises',
             'aliases' => array(),
@@ -137,9 +137,9 @@
             'dev_requirement' => false,
         ),
         'xeroapi/xero-php-oauth2' => array(
-            'pretty_version' => '7.1.0',
-            'version' => '7.1.0.0',
-            'reference' => '694259f0044651619a2c3d4837e26573066396df',
+            'pretty_version' => '7.3.0',
+            'version' => '7.3.0.0',
+            'reference' => '98e082b82edd634fa8a0add0239378ae2c99273f',
             'type' => 'library',
             'install_path' => __DIR__ . '/../xeroapi/xero-php-oauth2',
             'aliases' => array(),
