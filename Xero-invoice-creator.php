@@ -222,6 +222,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
 
          //============== Fetch customer from Knack
          $customer = find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key);    
+         
  
          $knack_data_push_to_xero[] = [
              'invoiceTrackerName'       => $InvoiceTrackerName,
