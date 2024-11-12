@@ -23,6 +23,7 @@ $provider = new \League\OAuth2\Client\Provider\GenericProvider([
 
 // =============================== Knack Configuration =======================
 $JobCardTableEndPoint = 'https://api.knack.com/v1/objects/object_3/records';
+$InvoiceTrackerTableEndPoint = 'https://api.knack.com/v1/objects/object_21/records',
 $CustomersTableEndPoint = 'https://api.knack.com/v1/objects/object_1/records';
 $ServLineItemsTableEndPoint = 'https://api.knack.com/v1/objects/object_10/records';
 $ProdLineItemsTableEndPoint = 'https://api.knack.com/v1/objects/object_8/records';
@@ -122,7 +123,7 @@ if (!isset($_GET['code'])) {
 }
 */
 
-find_job_record($JobCardTableEndPoint, $api_key, $app_id);
+
 //=========================>>>>>>>>>>> DEFINE FUNCTIONALITY <<<<<<<<<<<<============================================
 //==================================================================================================================
 
@@ -134,8 +135,7 @@ function logMessage($message)
     file_put_contents($logFile, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
 }
 
-function find_job_record($JobCardTableEndPoint, $api_key, $app_id)
-{
+function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $api_key, $app_id){
     $all_records = [];
     $page = 1;
     $per_page = 100; // You can adjust this if needed (max 100 per page)
@@ -145,13 +145,9 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id)
         'match' => 'or',
         'rules' => [
             [
-                'field' => 'field_374',         // XeroInvoiceNumber
+                'field' => 'field_228',         // Xero Invoice Creation Start
                 'operator' => 'is blank'
-            ],
-            [
-                'field' => 'field_214',         // Invoice Notes
-                'operator' => 'is blank',
-            ],
+            ]
         ],
     ];
 
@@ -160,7 +156,7 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id)
         $ch = curl_init();
 
         // Set cURL options
-        curl_setopt($ch, CURLOPT_URL, $JobCardTableEndPoint . '?page=' . $page . '&rows_per_page=' . $per_page . '&filters=' . urlencode(json_encode($filter_criteria)));
+        curl_setopt($ch, CURLOPT_URL, $InvoiceTrackerTableEndPoint . '?page=' . $page . '&rows_per_page=' . $per_page . '&filters=' . urlencode(json_encode($filter_criteria)));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array(
             'X-Knack-Application-Id: ' . $app_id,
@@ -201,55 +197,168 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id)
     
 
      // Display the data
-     echo '<h3 style="color:#800080;">>> Fetching Job Cards</h3>';
-
+     echo '<h3 style="color:#800080;">>> Fetching Invoices To Be Created</h3>';
      echo '<table border="1" style="color:#ff0090 ;">';
-     echo "<tr><th>Customer Number</th><th>Company Name</th><th>Contact First</th><th>Contact Last</th><th>Xero Account Number</th><th>Xero Last Updated</th><th>Xero Cust. Number</th></tr>";
-     $knack_job_cards = array();
+     echo "<tr><th>Job  Number</th><th>Xero Invoice Tracker Name</th><th>Customer Number</th><th>Job Card</th><th>Ready To Create</th></tr>";
+     $knack_data_push_to_xero = array();
      
      foreach ($all_records as $record) {
-         $knackRecordID = $record['id'] ?? 'N/A';
-         $job_record_number = $record['field_15'] ?? 'N/A';
-        
- 
+         $InvoiceTrackerName = $record['field_226'];
+         $jobNumber = $record['field_230'];
+         $customerNumber = $record['field_231'];
+         $readyToCreate = $record ['field_232'];
+         $jobCardNumber = $record['field_234'];
+
          echo "<tr>
+                 <td>$jobNumber</td>
+                 <td>$InvoiceTrackerName</td>
                  <td>$customerNumber</td>
-                 <td>$companyName</td>
-                 <td>$contactFirstName</td>
-                 <td>$contactLastName</td>
-                 <td>$xeroAccountNumber</td>
-                 <td>$xeroLastUpdated</td>
-                 <td>$xeroCustomerNumber</td>
-             </tr>";
+                <td>$jobCardNumber</td>
+                 <td>$readyToCreate</td>
+                </tr>";
+
+         //============== Fetch job from Knack
+         $job = find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber, $jobCardNumber)
+
+         //============== Fetch customer from Knack
+         $customer = find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key);    
  
-         $knack_customers[] = [
-             'knackRecordID'         => $knackRecordID,
-             'billingFirstName'      =>  $billingFirstName,
-             'billingLastName'       => $billingLastName,
-             'billingPhone'          => $billingPhone,
-             'billingEmail'          => $billingEmail,
-             'customerNumber'        => $customerNumber,
-             'companyName'           => $companyName,
-             'contactFirstName'      => $contactFirstName,
-             'contactLastname'       => $contactLastName,
-             'address'               => $address,
-             'address2'              => $address2,
-             'suburb'                => $suburb,
-             'city'                  => $city,
-             'postCode'              => $postCode,
-             'xeroCustomerNumber'    => $xeroCustomerNumber
-         ];
+         $knack_data_push_to_xero[] = [
+             'invoiceTrackerName'       => $InvoiceTrackerName,
+             'jobNumber'                => $jobNumber,
+             'customerNumber'           => $customerNumber,
+             'notes'                    => $job['field_33'];
+             'customer'                 => $job['field_25'];
+             'exemptionNumber'          => $job['field_26'];
+             'regoNumber'               => $job['field_18'];
+             'vinNumber'                => $job['field_17'];
+             'jobStatus'                => $job['field_97'];
+
+            ];
      }
  
      echo "</table>";
      echo "<br/><br/><br/>";
  
-     echo '<br/><div class="raw-contacts-info">';
+     echo '<br/><div class="raw-job info-info">';
      echo '<pre>';
      print_r($all_records);
      echo '</pre>';
      echo '</div>';
      echo '<br/>';
+}
+
+
+function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber, $jobCardNumber)
+{ // Filter criteria 
+    $filter_criteria = [
+        'match' => 'or',
+        'rules' => [
+            [
+                'field' => 'field_90',  // job number
+                'operator' => 'is',
+                'value' =>  $jobNumber,
+            ],
+            [
+                'field' => 'field_15',  // record number
+                'operator' => 'is',
+                'value' =>  $jobCardNumber,
+            ]
+        ],
+    ];
+
+    // Initialize cURL
+    $ch = curl_init();
+
+    // Set cURL options
+    $url = $JobCardTableEndPoint . '?filters=' . urlencode(json_encode($filter_criteria));
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'X-Knack-Application-Id: ' . $app_id,
+        'X-Knack-REST-API-Key: ' . $api_key,
+        'Content-Type: application/json',
+    ]);
+
+    // Execute the request
+    $response = curl_exec($ch);
+
+    // Check for errors
+    if (curl_errno($ch)) {
+        echo 'Error: ' . curl_error($ch);
+    } else {
+        // Check HTTP response code
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($http_code == 200) {
+            // Decode the JSON response
+            $response_data = json_decode($response, true); // Assuming the response is in JSON format
+
+            echo '<pre>';
+            print_r($response_data);
+            echo '</pre>';
+            echo ("<br/>Job record found and it is printed above<br/><br/>");
+        } else {
+            echo "Request failed with HTTP status code: $http_code";
+        }
+    }
+
+    // Close cURL
+    curl_close($ch);
+
+    return $response;
  
-     return $knack_job_cards;
  }
+
+ function find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key) {
+    // Filter criteria 
+    $filter_criteria = [
+        'match' => 'and',
+        'rules' => [
+            [
+                'field' => 'field_10',  // customer number
+                'operator' => 'is',
+                'value' =>  $customerNumber,
+            ],
+        ],
+    ];
+
+    // Initialize cURL
+    $ch = curl_init();
+
+    // Set cURL options
+    $url = $CustomersTableEndPoint . '?filters=' . urlencode(json_encode($filter_criteria));
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'X-Knack-Application-Id: ' . $app_id,
+        'X-Knack-REST-API-Key: ' . $api_key,
+        'Content-Type: application/json',
+    ]);
+
+    // Execute the request
+    $response = curl_exec($ch);
+
+    // Check for errors
+    if (curl_errno($ch)) {
+        echo 'Error: ' . curl_error($ch);
+    } else {
+        // Check HTTP response code
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($http_code == 200) {
+            // Decode the JSON response
+            $response_data = json_decode($response, true); // Assuming the response is in JSON format
+
+            echo '<pre>';
+            print_r($response_data);
+            echo '</pre>';
+            echo ("<br/>Customer record found and it is printed above<br/><br/>");
+        } else {
+            echo "Request failed with HTTP status code: $http_code";
+        }
+    }
+
+    // Close cURL
+    curl_close($ch);
+
+    return $response;
+}
