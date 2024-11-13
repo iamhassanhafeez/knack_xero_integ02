@@ -23,7 +23,7 @@ $provider = new \League\OAuth2\Client\Provider\GenericProvider([
 
 // =============================== Knack Configuration =======================
 $JobCardTableEndPoint = 'https://api.knack.com/v1/objects/object_3/records';
-$InvoiceTrackerTableEndPoint = 'https://api.knack.com/v1/objects/object_21/records',
+$InvoiceTrackerTableEndPoint = 'https://api.knack.com/v1/objects/object_21/records';
 $CustomersTableEndPoint = 'https://api.knack.com/v1/objects/object_1/records';
 $ServLineItemsTableEndPoint = 'https://api.knack.com/v1/objects/object_10/records';
 $ProdLineItemsTableEndPoint = 'https://api.knack.com/v1/objects/object_8/records';
@@ -122,8 +122,8 @@ if (!isset($_GET['code'])) {
     echo "</div>";
 }
 */
-
-
+$jobNumber = 102695;
+find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
 //=========================>>>>>>>>>>> DEFINE FUNCTIONALITY <<<<<<<<<<<<============================================
 //==================================================================================================================
 
@@ -135,7 +135,7 @@ function logMessage($message)
     file_put_contents($logFile, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
 }
 
-function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $api_key, $app_id){
+function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id){
     $all_records = [];
     $page = 1;
     $per_page = 100; // You can adjust this if needed (max 100 per page)
@@ -218,22 +218,42 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
                 </tr>";
 
          //============== Fetch job from Knack
-         $job = find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber, $jobCardNumber)
+         $job = find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
+         $dispatch_field_value = $job['field_99']; // E20 Courier - $7.00
+
+         // Step 1: Split the string at the ' - ' separator
+         $parts = explode(' - ', $dispatch_field_value);
+         
+         // Step 2: Extract the dispatch method (first part)
+         $dispatch_method = $parts[0]; // "E20 Courier"
+         
+         // Step 3: Extract the cost (second part) and remove the dollar sign
+         $dispatchCost = floatval(str_replace('$', '', $parts[1])); // 7.00
+
+         //=============== Fetch product line items from knack
+         $prod_line_items = read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key);
+
+         //=============== Fetch service line items
+         $service_line_items = read_service_line_items($ServLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key);
 
          //============== Fetch customer from Knack
          $customer = find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key);    
-         
- 
+
          $knack_data_push_to_xero[] = [
              'invoiceTrackerName'       => $InvoiceTrackerName,
              'jobNumber'                => $jobNumber,
              'customerNumber'           => $customerNumber,
-             'notes'                    => $job['field_33'];
-             'customer'                 => $job['field_25'];
-             'exemptionNumber'          => $job['field_26'];
-             'regoNumber'               => $job['field_18'];
-             'vinNumber'                => $job['field_17'];
-             'jobStatus'                => $job['field_97'];
+             'notes'                    => $job['field_33'],
+             'customer'                 => $job['field_25'],
+             'xeroAccountNumber'        => $customer['field_326'],
+             'exemptionNumber'          => $job['field_26'],
+             'regoNumber'               => $job['field_18'],
+             'vinNumber'                => $job['field_17'],
+             'jobStatus'                => $job['field_97'],
+             'dispatchMethod'           => $dispatch_method,
+             'dispatchCost'             => $dispatchCost,
+             'prodLineitems'            => $prod_line_items,
+             'servLineiTems'            => $service_line_items
 
             ];
      }
@@ -250,21 +270,17 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
 }
 
 
-function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber, $jobCardNumber)
+function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber)
 { // Filter criteria 
     $filter_criteria = [
-        'match' => 'or',
+       // 'match' => 'or',
         'rules' => [
             [
                 'field' => 'field_90',  // job number
                 'operator' => 'is',
                 'value' =>  $jobNumber,
             ],
-            [
-                'field' => 'field_15',  // record number
-                'operator' => 'is',
-                'value' =>  $jobCardNumber,
-            ]
+            
         ],
     ];
 
@@ -362,4 +378,114 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber, $
     curl_close($ch);
 
     return $response;
+}
+
+function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key){
+     // Filter criteria 
+     $filter_criteria = [
+        'match' => 'and',
+        'rules' => [
+            [
+                'field' => 'field_58',  // customer number
+                'operator' => 'is',
+                'value' =>  $jobCardNumber,
+            ],
+        ],
+    ];
+
+    // Initialize cURL
+    $ch = curl_init();
+
+    // Set cURL options
+    $url = $ProdLineItemsTableEndPoint . '?filters=' . urlencode(json_encode($filter_criteria));
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'X-Knack-Application-Id: ' . $app_id,
+        'X-Knack-REST-API-Key: ' . $api_key,
+        'Content-Type: application/json',
+    ]);
+
+    // Execute the request
+    $response = curl_exec($ch);
+
+    // Check for errors
+    if (curl_errno($ch)) {
+        echo 'Error: ' . curl_error($ch);
+    } else {
+        // Check HTTP response code
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($http_code == 200) {
+            // Decode the JSON response
+            $response_data = json_decode($response, true); // Assuming the response is in JSON format
+
+            echo '<pre>';
+            print_r($response_data);
+            echo '</pre>';
+            echo ("<br/>Product line items found and it is printed above<br/><br/>");
+        } else {
+            echo "Request failed with HTTP status code: $http_code";
+        }
+    }
+
+    // Close cURL
+    curl_close($ch);
+
+    return $response;
+    
+}
+
+function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key){
+    // Filter criteria 
+    $filter_criteria = [
+       'match' => 'and',
+       'rules' => [
+           [
+               'field' => 'field_58',  // customer number
+               'operator' => 'is',
+               'value' =>  $jobCardNumber,
+           ],
+       ],
+   ];
+
+   // Initialize cURL
+   $ch = curl_init();
+
+   // Set cURL options
+   $url = $ServiceLineItemsTableEndPoint . '?filters=' . urlencode(json_encode($filter_criteria));
+   curl_setopt($ch, CURLOPT_URL, $url);
+   curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+   curl_setopt($ch, CURLOPT_HTTPHEADER, [
+       'X-Knack-Application-Id: ' . $app_id,
+       'X-Knack-REST-API-Key: ' . $api_key,
+       'Content-Type: application/json',
+   ]);
+
+   // Execute the request
+   $response = curl_exec($ch);
+
+   // Check for errors
+   if (curl_errno($ch)) {
+       echo 'Error: ' . curl_error($ch);
+   } else {
+       // Check HTTP response code
+       $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+       if ($http_code == 200) {
+           // Decode the JSON response
+           $response_data = json_decode($response, true); // Assuming the response is in JSON format
+
+           echo '<pre>';
+           print_r($response_data);
+           echo '</pre>';
+           echo ("<br/>Service line items found and it is printed above<br/><br/>");
+       } else {
+           echo "Request failed with HTTP status code: $http_code";
+       }
+   }
+
+   // Close cURL
+   curl_close($ch);
+
+   return $response;
+   
 }
