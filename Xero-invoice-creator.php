@@ -5,6 +5,8 @@ require __DIR__ . '/vendor/autoload.php';
 
 session_start();
 
+use GuzzleHttp\Client;
+
 //============ Xero Config ==================
 $clientId = 'DB8962151A3D4C339A0D4B1E12712771';
 $clientSecret = 'hnXTTDTWyKi4Crhw2TEPnxmyP2qX92TH-HoCadvanaVX9w-P';
@@ -135,7 +137,7 @@ function logMessage($message)
     file_put_contents($logFile, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
 }
 
-function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id){
+function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken){
     $all_records = [];
     $page = 1;
     $per_page = 100; // You can adjust this if needed (max 100 per page)
@@ -237,7 +239,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          $service_line_items = read_service_line_items($ServLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key);
 
          //============== Fetch customer from Knack
-         $customer = find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key);    
+         $customer = find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key);     
 
          $knack_data_push_to_xero[] = [
              'invoiceTrackerName'       => $InvoiceTrackerName,
@@ -246,6 +248,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
              'notes'                    => $job['field_33'],
              'customer'                 => $job['field_25'],
              'xeroAccountNumber'        => $customer['field_326'],
+             'xeroContactId'            => $customer['field_382'],
              'exemptionNumber'          => $job['field_26'],
              'regoNumber'               => $job['field_18'],
              'vinNumber'                => $job['field_17'],
@@ -254,11 +257,16 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
              'dispatchCost'             => $dispatchCost,
              'prodLineitems'            => $prod_line_items,
              'servLineiTems'            => $service_line_items
-
             ];
 
             //===================== Create Xero Invoice
-            create_xero_invoice();
+            $result = create_xero_invoice($knack_data_push_to_xero, $accessToken, $dueDays);
+                        
+            if ($result['success']) {
+                echo "Invoice created successfully! Invoice ID: " . $result['invoiceId'];
+            } else {
+                echo "Error: " . $result['error'];
+            }
      }
  
      echo "</table>";
@@ -493,6 +501,56 @@ function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber,
    
 }
 
-function create_xero_invoice(){
+function create_xero_invoice($data_to_push, $accessToken, $dueDays = 30) {
+    // Set up the HTTP client (Guzzle)
+    $client = new Client([
+        'base_uri' => 'https://api.xero.com/api.xro/2.0/',
+        'headers' => [
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type'  => 'application/json',
+        ],
+    ]);
     
+    // Create the invoice data
+    $invoice = [
+        'Type' => 'ACCREC',  // 'ACCREC' for Accounts Receivable or 'ACCPAY' for Accounts Payable
+        'Contact' => [
+            'ContactID' => $contactId,  // Contact ID (you must have this beforehand)
+        ],
+        'LineItems' => $lineItems,  // Line items (array of items on the invoice)
+        'Date' => date('Y-m-d'),  // Today's date
+        'DueDate' => date('Y-m-d', strtotime("+$dueDays days")),  // Due date (default 30 days from now)
+      //  'Reference' => $reference,  // Invoice reference (optional)
+    ];
+    
+    try {
+        // Make the POST request to create the invoice
+        $response = $client->post('Invoices', [
+            'json' => [$invoice],  // Pass the invoice data as JSON
+        ]);
+
+        // Decode the response body
+        $body = $response->getBody();
+        $data = json_decode($body, true);
+        
+        // Check if the invoice creation was successful
+        if (isset($data['Invoices']) && count($data['Invoices']) > 0) {
+            return [
+                'success' => true,
+                'invoiceId' => $data['Invoices'][0]['InvoiceID'],  // Return the created Invoice ID
+                'invoice' => $data['Invoices'][0],  // Return the full invoice data
+            ];
+        } else {
+            return [
+                'success' => false,
+                'error' => 'Error creating invoice: ' . json_encode($data),
+            ];
+        }
+    } catch (\GuzzleHttp\Exception\RequestException $e) {
+        // Handle errors such as network or API errors
+        return [
+            'success' => false,
+            'error' => 'Request error: ' . $e->getMessage(),
+        ];
+    }
 }
