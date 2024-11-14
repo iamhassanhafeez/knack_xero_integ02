@@ -256,6 +256,9 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
              'servLineiTems'            => $service_line_items
 
             ];
+
+            //===================== Create Xero Invoice
+            create_xero_invoice();
      }
  
      echo "</table>";
@@ -488,4 +491,8 @@ function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber,
 
    return $response;
    
+}
+
+function create_xero_invoice(){
+    
 }
