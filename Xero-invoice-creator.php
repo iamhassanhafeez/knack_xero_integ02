@@ -203,6 +203,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
      echo '<table border="1" style="color:#ff0090 ;">';
      echo "<tr><th>Job  Number</th><th>Xero Invoice Tracker Name</th><th>Customer Number</th><th>Job Card</th><th>Ready To Create</th></tr>";
      $knack_data_push_to_xero = array();
+     $final_line_items = array();
      
      foreach ($all_records as $record) {
          $InvoiceTrackerName = $record['field_226'];
@@ -232,11 +233,33 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          // Step 3: Extract the cost (second part) and remove the dollar sign
          $dispatchCost = floatval(str_replace('$', '', $parts[1])); // 7.00
 
+         $final_line_items[]=[
+            'Description' => $dispatch_method,
+            'Quantity' => 1,
+            'UnitAmount' => $dispatchCost,
+        ];
+
          //=============== Fetch product line items from knack
          $prod_line_items = read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key);
+         foreach($prod_line_items as $prod){
+            $final_line_items[]=[
+                'Description' => $prod['field_85'],
+                'Quantity' => $prod['field_54'],
+                'UnitAmount' => $prod['field_55'],
+            ];
+
+         }
 
          //=============== Fetch service line items
          $service_line_items = read_service_line_items($ServLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key);
+         foreach($service_line_items as $serv){
+            $final_line_items[]=[
+                'Description' => $serv['field_77'],
+                'Quantity' => $serv['field_79'],
+                'UnitAmount' => $serv['field_80'],
+            ];
+
+         }
 
          //============== Fetch customer from Knack
          $customer = find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key);     
@@ -255,8 +278,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
              'jobStatus'                => $job['field_97'],
              'dispatchMethod'           => $dispatch_method,
              'dispatchCost'             => $dispatchCost,
-             'prodLineitems'            => $prod_line_items,
-             'servLineiTems'            => $service_line_items
+             'finalLineItems'           => $final_line_items,
             ];
 
             //===================== Create Xero Invoice
@@ -452,7 +474,7 @@ function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber,
        'match' => 'and',
        'rules' => [
            [
-               'field' => 'field_58',  // customer number
+               'field' => 'field_58',  // job card number
                'operator' => 'is',
                'value' =>  $jobCardNumber,
            ],
@@ -510,15 +532,16 @@ function create_xero_invoice($data_to_push, $accessToken, $dueDays = 30) {
             'Content-Type'  => 'application/json',
         ],
     ]);
+
     
     // Create the invoice data
     $invoice = [
         'Type' => 'ACCREC',  // 'ACCREC' for Accounts Receivable or 'ACCPAY' for Accounts Payable
         'Contact' => [
-            'ContactID' => $contactId,  // Contact ID (you must have this beforehand)
+            'ContactID' => $data_to_push['xeroContactId'],  
         ],
-        'LineItems' => $lineItems,  // Line items (array of items on the invoice)
-        'Date' => date('Y-m-d'),  // Today's date
+        'LineItems' => $data_to_push['finalLineItems'],  // Line items (array of items on the invoice)
+        'Date' => date('Y-m-d'),
         'DueDate' => date('Y-m-d', strtotime("+$dueDays days")),  // Due date (default 30 days from now)
       //  'Reference' => $reference,  // Invoice reference (optional)
     ];
