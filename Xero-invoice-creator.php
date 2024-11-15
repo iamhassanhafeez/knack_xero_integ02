@@ -285,7 +285,9 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
             $result = create_xero_invoice($knack_data_push_to_xero, $accessToken, $dueDays);
                         
             if ($result['success']) {
-                echo "Invoice created successfully! Invoice ID: " . $result['invoiceId'];
+                 $message = "Invoice created successfully! Invoice ID: " . $result['invoiceId'];
+                 logMessage($message);
+                echo $message;
             } else {
                 echo "Error: " . $result['error'];
             }
@@ -346,6 +348,8 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber)
             echo '<pre>';
             print_r($response_data);
             echo '</pre>';
+            $message = "<br/>Job record found.";
+            logMessage($message);
             echo ("<br/>Job record found and it is printed above<br/><br/>");
         } else {
             echo "Request failed with HTTP status code: $http_code";
@@ -401,7 +405,10 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber)
             echo '<pre>';
             print_r($response_data);
             echo '</pre>';
+            $message = "<br/>Customer record found.";
+            logMessage($message);
             echo ("<br/>Customer record found and it is printed above<br/><br/>");
+            
         } else {
             echo "Request failed with HTTP status code: $http_code";
         }
@@ -455,6 +462,8 @@ function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $a
             echo '<pre>';
             print_r($response_data);
             echo '</pre>';
+            $message = "<br/>Product line items found.";
+            logMessage($message);
             echo ("<br/>Product line items found and it is printed above<br/><br/>");
         } else {
             echo "Request failed with HTTP status code: $http_code";
@@ -510,6 +519,8 @@ function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber,
            echo '<pre>';
            print_r($response_data);
            echo '</pre>';
+           $message = "<br/>Service line items.";
+           logMessage($message);
            echo ("<br/>Service line items found and it is printed above<br/><br/>");
        } else {
            echo "Request failed with HTTP status code: $http_code";
