@@ -265,6 +265,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          $customer = find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key);     
 
          $knack_data_push_to_xero[] = [
+            'invTrackerRecId'           => $record['id'],
              'invoiceTrackerName'       => $InvoiceTrackerName,
              'jobNumber'                => $jobNumber,
              'customerNumber'           => $customerNumber,
@@ -283,10 +284,17 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
 
             //===================== Create Xero Invoice
             $result = create_xero_invoice($knack_data_push_to_xero, $accessToken, $dueDays);
+            $knack_data_push_to_xero[] = [
+                'invoiceNumber'             => $result['InvoiceNumber'],
+                'xeroInvCreationStart'      => date('Y-m-d'),
+                'xeroInvCreationEnd'      => date('Y-m-d')
+            ];
                         
             if ($result['success']) {
-                 $message = "Invoice created successfully! Invoice ID: " . $result['invoiceId'];
+                 $message = "Invoice created successfully! Invoice ID: " . $result['invoiceId']. "Updatig Invoice tracker table.";
                  logMessage($message);
+                 update_xero_invoice_tracker($InvoiceTrackerTableEndPoint, $knack_data_push_to_xero, $app_id, $api_key);
+
                 echo $message;
             } else {
                 echo "Error: " . $result['error'];
@@ -587,4 +595,52 @@ function create_xero_invoice($data_to_push, $accessToken, $dueDays = 30) {
             'error' => 'Request error: ' . $e->getMessage(),
         ];
     }
+}
+
+function update_xero_invoice_tracker($InvoiceTrackerTableEndPoint, $data, $app_id, $api_key){
+    
+
+    // Define the record ID and the fields to update
+    $knackRecordID = $data['invTrackerRecId'];
+    $xeroLastUpdated = date('Y-m-d H:i:s');
+
+    // Define the URL for the API request. $CustomersTableEndPoint is "https://api.knack.com/v1/objects/object_1/records"
+    $url = $CustomersTableEndPoint . '/' . $knackRecordID;
+
+    // Define the data to be sent
+    $data = [
+        'field_226' => $data['invoiceNumber'], //Xero invoice tracker name
+        'field_235' => $data['invoiceNumber']." / Created Darft Invoice", // Status note
+        'field_232' => null, //Empty the Ready to create field
+        'field_234' => null //Empty the Job card field
+    ];
+
+    // Initialize cURL
+    $ch = curl_init($url);
+
+    // Set cURL options
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "X-Knack-Application-Id: $app_id",
+        "X-Knack-REST-API-Key: $api_key",
+        "Content-Type: application/json"
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+    // Execute the request
+    $response = curl_exec($ch);
+
+    // Check for errors
+    if (curl_errno($ch)) {
+        echo 'Error:' . curl_error($ch);
+    } else {
+        // Log the successful fetch of customer data
+        logMessage("Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID");
+        echo ("<br/>Customer record successfully updated in Knack (Customers) table. Record ID: $knackRecordID <br/><br/>");
+    }
+
+    // Close cURL
+    curl_close($ch);
+
 }
