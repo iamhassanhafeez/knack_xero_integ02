@@ -33,7 +33,7 @@ $ProdLineItemsTableEndPoint = 'https://api.knack.com/v1/objects/object_8/records
 $api_key = '5731568a-75ed-4a6e-b906-7c3cda415405';
 $app_id = '64ec0e7df4070c0028ff4a07';
 
-/*
+
 // Let's establish a connection with Xero first
 
 // If we don't have an authorization code then get one
@@ -123,9 +123,13 @@ if (!isset($_GET['code'])) {
 
     echo "</div>";
 }
-*/
-$jobNumber = 102695;
-find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
+
+
+// $jobNumber = 102695;
+// find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
+//Call functionality
+xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken);
+
 //=========================>>>>>>>>>>> DEFINE FUNCTIONALITY <<<<<<<<<<<<============================================
 //==================================================================================================================
 
@@ -203,9 +207,10 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
      echo '<table border="1" style="color:#ff0090 ;">';
      echo "<tr><th>Job  Number</th><th>Xero Invoice Tracker Name</th><th>Customer Number</th><th>Job Card</th><th>Ready To Create</th></tr>";
      $knack_data_push_to_xero = array();
-     $final_line_items = array();
      
      foreach ($all_records as $record) {
+        $final_line_items = array();
+
          $InvoiceTrackerName = $record['field_226'];
          $jobNumber = $record['field_230'];
          $customerNumber = $record['field_231'];
@@ -222,6 +227,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
 
          //============== Fetch job from Knack
          $job = find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
+         $job = $job['records'][0];
          $dispatch_field_value = $job['field_99']; // E20 Courier - $7.00
 
          // Step 1: Split the string at the ' - ' separator
@@ -241,7 +247,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
 
          //=============== Fetch product line items from knack
          $prod_line_items = read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key);
-         foreach($prod_line_items as $prod){
+         foreach($prod_line_items['records'] as $prod){
             $final_line_items[]=[
                 'Description' => $prod['field_85'],
                 'Quantity' => $prod['field_54'],
@@ -252,7 +258,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
 
          //=============== Fetch service line items
          $service_line_items = read_service_line_items($ServLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key);
-         foreach($service_line_items as $serv){
+         foreach($service_line_items['records'] as $serv){
             $final_line_items[]=[
                 'Description' => $serv['field_77'],
                 'Quantity' => $serv['field_79'],
@@ -262,7 +268,8 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          }
 
          //============== Fetch customer from Knack
-         $customer = find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key);     
+         $customer = find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key);   
+         $customer = $customer['records'][0];  
 
          $knack_data_push_to_xero[] = [
             'invTrackerRecId'           => $record['id'],
@@ -303,13 +310,6 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
  
      echo "</table>";
      echo "<br/><br/><br/>";
- 
-     echo '<br/><div class="raw-job info-info">';
-     echo '<pre>';
-     print_r($all_records);
-     echo '</pre>';
-     echo '</div>';
-     echo '<br/>';
 }
 
 
@@ -367,7 +367,7 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber)
     // Close cURL
     curl_close($ch);
 
-    return $response;
+    return $response_data;
  
  }
 
@@ -425,7 +425,7 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber)
     // Close cURL
     curl_close($ch);
 
-    return $response;
+    return $response_data;
 }
 
 function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key){
@@ -481,7 +481,7 @@ function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $a
     // Close cURL
     curl_close($ch);
 
-    return $response;
+    return $response_data;
     
 }
 
@@ -538,7 +538,7 @@ function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber,
    // Close cURL
    curl_close($ch);
 
-   return $response;
+   return $response_data;
    
 }
 
