@@ -33,7 +33,7 @@ $ProdLineItemsTableEndPoint = 'https://api.knack.com/v1/objects/object_8/records
 $api_key = '5731568a-75ed-4a6e-b906-7c3cda415405';
 $app_id = '64ec0e7df4070c0028ff4a07';
 
-
+/*
 // Let's establish a connection with Xero first
 
 // If we don't have an authorization code then get one
@@ -123,7 +123,7 @@ if (!isset($_GET['code'])) {
 
     echo "</div>";
 }
-
+*/
 
 // $jobNumber = 102695;
 // find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
@@ -205,7 +205,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
      // Display the data
      echo '<h3 style="color:#800080;">>> Fetching Invoices To Be Created</h3>';
      echo '<table border="1" style="color:#ff0090 ;">';
-     echo "<tr><th>Job  Number</th><th>Xero Invoice Tracker Name</th><th>Customer Number</th><th>Job Card</th><th>Ready To Create</th></tr>";
+     echo "<tr><th>Job  Number</th><th>Xero Invoice Tracker Name</th><th>Customer Number</th><th>Job Card</th><th>Ready To Create</th><th>Status</th></tr>";
      $knack_data_push_to_xero = array();
      
      foreach ($all_records as $record) {
@@ -217,13 +217,14 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          $readyToCreate = $record ['field_232'];
          $jobCardNumber = $record['field_234'];
 
-         echo "<tr>
-                 <td>$jobNumber</td>
-                 <td>$InvoiceTrackerName</td>
-                 <td>$customerNumber</td>
-                <td>$jobCardNumber</td>
-                 <td>$readyToCreate</td>
-                </tr>";
+         echo '<tr>
+                 <td>'.$jobNumber.'</td>
+                 <td>'.$InvoiceTrackerName.'</td>
+                 <td>'.$customerNumber.'</td>
+                <td>'.$jobCardNumber.'</td>
+                 <td>'.$readyToCreate.'</td>
+                 <td id="'.$record['id'].'">Creating...</td>
+                </tr>';
 
          //============== Fetch job from Knack
          $job = find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
@@ -270,6 +271,9 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          //============== Fetch customer from Knack
          $customer = find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key);   
          $customer = $customer['records'][0];  
+         echo "<pre>";
+         print_r($customer);
+         echo"</pre>";
 
          $knack_data_push_to_xero[] = [
             'invTrackerRecId'           => $record['id'],
@@ -290,7 +294,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
             ];
 
             //===================== Create Xero Invoice
-            $result = create_xero_invoice($knack_data_push_to_xero, $accessToken, $dueDays);
+            $result = create_xero_invoice($knack_data_push_to_xero, $accessToken);
             $knack_data_push_to_xero[] = [
                 'invoiceNumber'             => $result['InvoiceNumber'],
                 'xeroInvCreationStart'      => date('Y-m-d'),
@@ -298,14 +302,19 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
             ];
                         
             if ($result['success']) {
+                echo '<script>document.querySelector("#'.$record['id'].'").innerHTML = "'.$result['success'].'"</script>';
                  $message = "Invoice created successfully! Invoice ID: " . $result['invoiceId']. "Updatig Invoice tracker table.";
                  logMessage($message);
                  update_xero_invoice_tracker($InvoiceTrackerTableEndPoint, $knack_data_push_to_xero, $app_id, $api_key);
 
                 echo $message;
             } else {
+                echo '<script>document.querySelector("#'.$record['id'].'").innerHTML = "'.$result['error'].'"</script>';
+
                 echo "Error: " . $result['error'];
             }
+
+            break;
      }
  
      echo "</table>";
