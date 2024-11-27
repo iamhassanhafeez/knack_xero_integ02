@@ -33,7 +33,7 @@ $ProdLineItemsTableEndPoint = 'https://api.knack.com/v1/objects/object_8/records
 $api_key = '5731568a-75ed-4a6e-b906-7c3cda415405';
 $app_id = '64ec0e7df4070c0028ff4a07';
 
-/*
+
 // Let's establish a connection with Xero first
 
 // If we don't have an authorization code then get one
@@ -123,14 +123,14 @@ if (!isset($_GET['code'])) {
 
     echo "</div>";
 }
-    */
+    
 
 
 // $jobNumber = 102695;
 // find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
 //Call functionality
 xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id
-//,$accessToken
+,$accessToken, $tenantID
 );
 
 //=========================>>>>>>>>>>> DEFINE FUNCTIONALITY <<<<<<<<<<<<============================================
@@ -145,7 +145,7 @@ function logMessage($message)
 }
 
 function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id
-//, $accessToken
+, $accessToken, $tenantID
 ){
     $all_records = [];
     $page = 1;
@@ -309,10 +309,17 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
              'finalLineItems'           => $final_line_items,
             ];
 
+            $xeroContactID = $customer['field_382'];
+            
             //===================== Create Xero Invoice
-            $result = create_xero_invoice($knack_data_push_to_xero, $accessToken);
+            $dueDays = 30;
+            $result = create_xero_invoice($xeroContactID, $tenantID, $final_line_items, $accessToken, $dueDays);
+              echo "<pre>";
+         print_r($result);
+         echo"</pre>";
+         die;
             $knack_data_push_to_xero[] = [
-                'invoiceNumber'             => $result['InvoiceNumber'],
+                'invoiceNumber'             => $result['InvoiceNumber']??'',
                 'xeroInvCreationStart'      => date('Y-m-d'),
                 'xeroInvCreationEnd'      => date('Y-m-d')
             ];
@@ -572,24 +579,33 @@ function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber,
    
 }
 
-function create_xero_invoice($data_to_push, $accessToken, $dueDays = 30) {
+function create_xero_invoice($xeroContactID,$tenantID, $final_line_items, $accessToken, $dueDays = 30) {
     // Set up the HTTP client (Guzzle)
     $client = new Client([
         'base_uri' => 'https://api.xero.com/api.xro/2.0/',
         'headers' => [
             'Authorization' => 'Bearer ' . $accessToken,
             'Content-Type'  => 'application/json',
+            'Xero-Tenant-Id' => $tenantID,
         ],
-    ]);
+    ]);    
 
-    
+    // Loop through the line items to clean up the UnitAmount values
+    foreach ($final_line_items as &$item) {
+        // Remove dollar signs and commas, then cast to float
+        $item['UnitAmount'] = (float)str_replace([ '$', ',' ], '', $item['UnitAmount']);
+    }
+
+        echo '<pre>';
+           print_r($final_line_items);
+           echo '</pre>';
     // Create the invoice data
     $invoice = [
         'Type' => 'ACCREC',  // 'ACCREC' for Accounts Receivable or 'ACCPAY' for Accounts Payable
         'Contact' => [
-            'ContactID' => $data_to_push['xeroContactId'],  
+            'ContactID' => $xeroContactID,  
         ],
-        'LineItems' => $data_to_push['finalLineItems'],  // Line items (array of items on the invoice)
+        'LineItems' => $final_line_items,  // Line items (array of items on the invoice)
         'Date' => date('Y-m-d'),
         'DueDate' => date('Y-m-d', strtotime("+$dueDays days")),  // Due date (default 30 days from now)
       //  'Reference' => $reference,  // Invoice reference (optional)
@@ -598,7 +614,7 @@ function create_xero_invoice($data_to_push, $accessToken, $dueDays = 30) {
     try {
         // Make the POST request to create the invoice
         $response = $client->post('Invoices', [
-            'json' => [$invoice],  // Pass the invoice data as JSON
+            'json' => $invoice,  // Pass the invoice data as JSON
         ]);
 
         // Decode the response body
