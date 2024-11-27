@@ -232,8 +232,9 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
                 </tr>';
 
          //============== Fetch job from Knack
+         echo '<br/><b style="color:#0f1d68;">### Started Invoicing Process For The Job:'.$jobNumber.'</b>';
 
-         echo "### Fetching the associated job.";
+         echo "<br/># Fetching the associated job.";
          $job = find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
          $job = $job['records'][0];
          $job_id = $job['id'];
@@ -255,44 +256,40 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
         ];
 
          //=============== Fetch product line items from knack
-         echo "<br/>### Fetching asscoiated product line items with this job.";
+         echo '<br/># Fetching associated product line items.';
          //passing $job_id instead of job card number because job card number field is connection type and needs rec id to be passed instead.
          $prod_line_items = read_product_line_items($ProdLineItemsTableEndPoint, $job_id, $app_id, $api_key); 
-          echo '<pre>';
-          print_r  ($prod_line_items);
-         echo '</pre>';
-         die;
+          
          foreach($prod_line_items['records'] as $prod){
             $final_line_items[]=[
                 'Description' => $prod['field_85'],
                 'Quantity' => $prod['field_54'],
-                'UnitAmount' => $prod['field_55'],
+                'UnitAmount' => $prod['field_56'],
             ];
 
          }
 
-        //  echo '<pre>';
-        //  print_r($final_line_items);
-        //  echo '</pre>';
-        //  die;
+        
 
          //=============== Fetch service line items
-         $service_line_items = read_service_line_items($ServLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key);
+         echo '<br/># Fetching associated service line items.';
+         $service_line_items = read_service_line_items($ServLineItemsTableEndPoint, $job_id, $app_id, $api_key);
          foreach($service_line_items['records'] as $serv){
             $final_line_items[]=[
                 'Description' => $serv['field_77'],
                 'Quantity' => $serv['field_79'],
-                'UnitAmount' => $serv['field_80'],
+                'UnitAmount' => $serv['field_83'],
             ];
 
          }
-
+        
          //============== Fetch customer from Knack
          $customer = find_customer_record($customerNumber, $CustomersTableEndPoint, $app_id, $api_key);   
          $customer = $customer['records'][0];  
-         echo "<pre>";
-         print_r($customer);
-         echo"</pre>";
+        //  echo "<pre>";
+        //  print_r($customer);
+        //  echo"</pre>";
+        //  die;
 
          $knack_data_push_to_xero[] = [
             'invTrackerRecId'           => $record['id'],
@@ -440,12 +437,12 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber)
             // Decode the JSON response
             $response_data = json_decode($response, true); // Assuming the response is in JSON format
 
-            echo '<pre>';
-            print_r($response_data);
-            echo '</pre>';
+            // echo '<pre>';
+            // print_r($response_data);
+            // echo '</pre>';
             $message = "<br/>Customer record found.";
             logMessage($message);
-            echo ("<br/>> Customer record found and it is printed above<br/><br/>");
+            echo ("<br/>> Customer record found.");
             
         } else {
             echo "Request failed with HTTP status code: $http_code";
@@ -466,7 +463,7 @@ function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardId, $app_i
             [
                 'field' => 'field_58',  // Connection field for job card number
                 'operator' => 'is',
-                'value' => $jobCardId,  // Use the dynamic job card number
+                'value' => $jobCardId,  // Use the job card rec id
             ],
         ],
     ];
@@ -504,7 +501,7 @@ function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardId, $app_i
             // echo '</pre>';
             $message = "<br/>Product line items found.";
             logMessage($message);
-            echo ("<br/>> Product line items found associated with this job.");
+            echo ("<br/>> Product line items found.");
         } else {
             echo "Request failed with HTTP status code: $http_code";
         }
@@ -557,12 +554,12 @@ function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber,
            // Decode the JSON response
            $response_data = json_decode($response, true); // Assuming the response is in JSON format
 
-           echo '<pre>';
-           print_r($response_data);
-           echo '</pre>';
+        //    echo '<pre>';
+        //    print_r($response_data);
+        //    echo '</pre>';
            $message = "<br/>Service line items.";
            logMessage($message);
-           echo ("<br/>Service line items found and it is printed above<br/><br/>");
+           echo ("<br/>> Service line items found.");
        } else {
            echo "Request failed with HTTP status code: $http_code";
        }
