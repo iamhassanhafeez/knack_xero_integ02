@@ -123,12 +123,15 @@ if (!isset($_GET['code'])) {
 
     echo "</div>";
 }
-*/
+    */
+
 
 // $jobNumber = 102695;
 // find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
 //Call functionality
-xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken);
+xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id
+//,$accessToken
+);
 
 //=========================>>>>>>>>>>> DEFINE FUNCTIONALITY <<<<<<<<<<<<============================================
 //==================================================================================================================
@@ -141,7 +144,9 @@ function logMessage($message)
     file_put_contents($logFile, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
 }
 
-function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken){
+function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id
+//, $accessToken
+){
     $all_records = [];
     $page = 1;
     $per_page = 100; // You can adjust this if needed (max 100 per page)
@@ -216,7 +221,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          $customerNumber = $record['field_231'];
          $readyToCreate = $record ['field_232'];
          $jobCardNumber = $record['field_234'];
-
+         
          echo '<tr>
                  <td>'.$jobNumber.'</td>
                  <td>'.$InvoiceTrackerName.'</td>
@@ -227,8 +232,11 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
                 </tr>';
 
          //============== Fetch job from Knack
+
+         echo "### Fetching the associated job.";
          $job = find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
          $job = $job['records'][0];
+         $job_id = $job['id'];
          $dispatch_field_value = $job['field_99']; // E20 Courier - $7.00
 
          // Step 1: Split the string at the ' - ' separator
@@ -247,7 +255,13 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
         ];
 
          //=============== Fetch product line items from knack
-         $prod_line_items = read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key);
+         echo "<br/>### Fetching asscoiated product line items with this job.";
+         //passing $job_id instead of job card number because job card number field is connection type and needs rec id to be passed instead.
+         $prod_line_items = read_product_line_items($ProdLineItemsTableEndPoint, $job_id, $app_id, $api_key); 
+          echo '<pre>';
+          print_r  ($prod_line_items);
+         echo '</pre>';
+         die;
          foreach($prod_line_items['records'] as $prod){
             $final_line_items[]=[
                 'Description' => $prod['field_85'],
@@ -256,6 +270,11 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
             ];
 
          }
+
+        //  echo '<pre>';
+        //  print_r($final_line_items);
+        //  echo '</pre>';
+        //  die;
 
          //=============== Fetch service line items
          $service_line_items = read_service_line_items($ServLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key);
@@ -305,7 +324,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
                 echo '<script>document.querySelector("#'.$record['id'].'").innerHTML = "'.$result['success'].'"</script>';
                  $message = "Invoice created successfully! Invoice ID: " . $result['invoiceId']. "Updatig Invoice tracker table.";
                  logMessage($message);
-                 update_xero_invoice_tracker($InvoiceTrackerTableEndPoint, $knack_data_push_to_xero, $app_id, $api_key);
+              //   update_xero_invoice_tracker($InvoiceTrackerTableEndPoint, $knack_data_push_to_xero, $app_id, $api_key);
 
                 echo $message;
             } else {
@@ -315,6 +334,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
             }
 
             break;
+            echo "<br/><br/><br/>";
      }
  
      echo "</table>";
@@ -362,12 +382,13 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber)
             // Decode the JSON response
             $response_data = json_decode($response, true); // Assuming the response is in JSON format
 
-            echo '<pre>';
-            print_r($response_data);
-            echo '</pre>';
-            $message = "<br/>Job record found.";
+            // echo '<pre>';
+            // print_r($response_data);
+            // echo '</pre>';
+            $message = "<br/ >> Job record found against this job number: <b>$jobNumber</b>";
             logMessage($message);
-            echo ("<br/>Job record found and it is printed above<br/><br/>");
+            echo $message;
+          //  echo ("<br/>Job record found and it is printed above<br/><br/>");
         } else {
             echo "Request failed with HTTP status code: $http_code";
         }
@@ -424,7 +445,7 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber)
             echo '</pre>';
             $message = "<br/>Customer record found.";
             logMessage($message);
-            echo ("<br/>Customer record found and it is printed above<br/><br/>");
+            echo ("<br/>> Customer record found and it is printed above<br/><br/>");
             
         } else {
             echo "Request failed with HTTP status code: $http_code";
@@ -437,15 +458,15 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber)
     return $response_data;
 }
 
-function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key){
-     // Filter criteria 
-     $filter_criteria = [
+function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardId, $app_id, $api_key) {
+    // Filter criteria with dynamic $jobCardNumber
+    $filter_criteria = [
         'match' => 'and',
         'rules' => [
             [
-                'field' => 'field_58',  // customer number
+                'field' => 'field_58',  // Connection field for job card number
                 'operator' => 'is',
-                'value' =>  $jobCardNumber,
+                'value' => $jobCardId,  // Use the dynamic job card number
             ],
         ],
     ];
@@ -453,8 +474,10 @@ function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $a
     // Initialize cURL
     $ch = curl_init();
 
-    // Set cURL options
+    // Encode the filter criteria and append it as a query parameter
     $url = $ProdLineItemsTableEndPoint . '?filters=' . urlencode(json_encode($filter_criteria));
+
+    // Set cURL options
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -476,12 +499,12 @@ function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $a
             // Decode the JSON response
             $response_data = json_decode($response, true); // Assuming the response is in JSON format
 
-            echo '<pre>';
-            print_r($response_data);
-            echo '</pre>';
+            // echo '<pre>';
+            // print_r($response_data);
+            // echo '</pre>';
             $message = "<br/>Product line items found.";
             logMessage($message);
-            echo ("<br/>Product line items found and it is printed above<br/><br/>");
+            echo ("<br/>> Product line items found associated with this job.");
         } else {
             echo "Request failed with HTTP status code: $http_code";
         }
@@ -490,9 +513,10 @@ function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardNumber, $a
     // Close cURL
     curl_close($ch);
 
+    // Return the response data for further use if needed
     return $response_data;
-    
 }
+
 
 function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key){
     // Filter criteria 
