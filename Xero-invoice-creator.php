@@ -67,7 +67,7 @@ if (!isset($_GET['code'])) {
         ]);
 
         // Log the successful token retrieval
-        logMessage("Access token retrieved successfully.");
+      //  logMessage("Access token retrieved successfully.");
 
         // We have an access token, which we may use in authenticated requests 
         // Retrieve the array of connected orgs and their tenant ids.      
@@ -85,7 +85,7 @@ if (!isset($_GET['code'])) {
         $tenantID = $xeroTenantIdArray[0]['tenantId'];
 
         // Log the tenant ID
-        logMessage("Xero tenant ID retrieved: $tenantID");
+      //  logMessage("Xero tenant ID retrieved: $tenantID");
 
         echo '<h3 class="success" style="color:#ff0000; cursor:pointer;">>> Connected Successfully - Click to toggle info visibility.</h1>';
         echo '<div class="raw_connection_info" style="color:#c40233; display:none;">';
@@ -113,7 +113,7 @@ if (!isset($_GET['code'])) {
     } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
 
         // Log the exception message
-        logMessage("Error retrieving access token or user details: " . $e->getMessage());
+      //  logMessage("Error retrieving access token or user details: " . $e->getMessage());
 
         // Failed to get the access token or user details.
         exit($e->getMessage());
@@ -124,9 +124,63 @@ if (!isset($_GET['code'])) {
     
 
 
-// $jobNumber = 102695;
-// find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber);
-//Call functionality
+$xfinal_line_items = [
+    "Id" => "c82e685b-8c64-43ee-8b27-996c7dc743f5",
+    "Status" => "OK",
+    "ProviderName" => "API Explorer",
+    "DateTimeUTC" => "/Date(1732871175237)/",
+    "Invoices" => [
+        [
+            "Type" => "ACCREC",
+            "InvoiceID" => "14e52695-7c90-413f-b6ea-e32a79145665",
+            "InvoiceNumber" => "INV-0001",
+            "Reference" => "",
+            "Payments" => [],
+            "CreditNotes" => [],
+            "Prepayments" => [],
+            "Overpayments" => [],
+            "AmountDue" => 456,
+            "AmountPaid" => 0,
+            "AmountCredited" => 0,
+            "CurrencyRate" => 1,
+            "IsDiscounted" => false,
+            "HasAttachments" => false,
+            "InvoiceAddresses" => [],
+            "HasErrors" => false,
+            "InvoicePaymentServices" => [],
+            "Contact" => [
+                "ContactID" => "170473c3-c21c-4016-af7a-4bb32008664c",
+                "Name" => "Hassan hafeez",
+                "Addresses" => [],
+                "Phones" => [],
+                "ContactGroups" => [],
+                "ContactPersons" => [],
+                "HasValidationErrors" => false
+            ],
+            "DateString" => "2024-11-29T00:00:00",
+            "Date" => "/Date(1732838400000+0000)/",
+            "DueDateString" => "2024-12-06T00:00:00",
+            "DueDate" => "/Date(1733443200000+0000)/",
+            "BrandingThemeID" => "38523938-df80-40e8-b42c-cc2bae4e961d",
+            "Status" => "DRAFT",
+            "LineAmountTypes" => "NoTax",
+            "LineItems" => [],
+            "SubTotal" => 456,
+            "TotalTax" => 0,
+            "Total" => 456,
+            "UpdatedDateUTC" => "/Date(1732871161967+0000)/",
+            "CurrencyCode" => "NZD"
+        ]
+    ]
+];
+
+
+
+//use Carbon\Carbon;
+
+
+
+///Call functionality
 xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken, $tenantID, $provider
 );
 
@@ -246,9 +300,13 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          $dispatchCost = floatval(str_replace('$', '', $parts[1])); // 7.00
 
          $final_line_items[]=[
-            'Description' => $dispatch_method,
+
+            'Description' => $dispatch_method, 
             'Quantity' => 1,
             'UnitAmount' => $dispatchCost,
+            'AccountCode' => '200',  // Ensure this is a valid Xero account code
+            'TaxType' => 'NONE',  // Tax type from the example, none means exempted
+            'LineAmount' => $dispatchCost  // LineAmount (calculated as Quantity * UnitAmount)
         ];
 
          //=============== Fetch product line items from knack
@@ -258,9 +316,12 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
           
          foreach($prod_line_items['records'] as $prod){
             $final_line_items[]=[
-                'Description' => $prod['field_85'],
+                'Description' => $prod['field_85'], 
                 'Quantity' => $prod['field_54'],
-                'UnitAmount' => $prod['field_56'],
+                'UnitAmount' => floatval(str_replace('$', '', $prod['field_56'])),
+                'AccountCode' => '200',  // Ensure this is a valid Xero account code
+                'TaxType' => 'NONE',  // Tax type from the example, none means exempted
+                'LineAmount' => floatval(str_replace('$', '', $prod['field_57'])) ??  $prod['field_54'] * floatval(str_replace('$', '', $prod['field_56']))  // LineAmount (calculated as Quantity * UnitAmount)
             ];
 
          }
@@ -272,9 +333,12 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          $service_line_items = read_service_line_items($ServLineItemsTableEndPoint, $job_id, $app_id, $api_key);
          foreach($service_line_items['records'] as $serv){
             $final_line_items[]=[
-                'Description' => $serv['field_77'],
+                'Description' => $serv['field_77'], 
                 'Quantity' => $serv['field_79'],
-                'UnitAmount' => $serv['field_83'],
+                'UnitAmount' =>floatval(str_replace('$', '',  $serv['field_83'])),
+                'AccountCode' => '200',  // Ensure this is a valid Xero account code
+                'TaxType' => 'NONE',  // Tax type from the example, none means exempted
+                'LineAmount' =>floatval(str_replace('$', '', $serv['field_84'])) ?? $serv['field_79'] * floatval(str_replace('$', '', $serv['field_83']))  // LineAmount (calculated as Quantity * UnitAmount)
             ];
 
          }
@@ -307,45 +371,33 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
 
             $xeroContactID = $customer['field_382'];
             
-            $final_line_items = [
-                [
-                    'Description' => 'Item description',
-                    'Quantity' => 1,
-                    'UnitAmount' => 100.00,
-                    'AccountCode' => '200',  // Ensure this is a valid Xero account code
-                    'TaxType' => 'OUTPUT',   // Optional, depending on tax configuration
-                ]
-            ];
-            
 
             //===================== Create Xero Invoice
             $dueDays = 30;
             $result = create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_line_items, $dueDays = 30);
-          // $result = create_xero_invoice($xeroContactID,$tenantID, $provider, $final_line_items, $accessToken, $dueDays = 30);
-            echo "<pre>";
+            echo "<pre> The invoice number is:";
             print_r($result);
             echo"</pre>";
-            die;
             $knack_data_push_to_xero[] = [
-                'invoiceNumber'             => $result['InvoiceNumber']??'',
+                'invoiceNumber'             => $result,
                 'xeroInvCreationStart'      => date('Y-m-d'),
                 'xeroInvCreationEnd'      => date('Y-m-d')
             ];
                         
-            if ($result['success']) {
-                echo '<script>document.querySelector("#'.$record['id'].'").innerHTML = "'.$result['success'].'"</script>';
-                 $message = "Invoice created successfully! Invoice ID: " . $result['invoiceId']. "Updatig Invoice tracker table.";
+            if ($result) {
+                echo '<script>document.querySelector("#'.$record['id'].'").innerHTML = "'.$result.'"</script>';
+                 $message = "Invoice created successfully! Invoice Number: " . $result. " Updatig Invoice tracker table.";
                  logMessage($message);
-              //   update_xero_invoice_tracker($InvoiceTrackerTableEndPoint, $knack_data_push_to_xero, $app_id, $api_key);
+                 update_xero_invoice_tracker($InvoiceTrackerTableEndPoint, $knack_data_push_to_xero, $app_id, $api_key);
 
                 echo $message;
             } else {
-                echo '<script>document.querySelector("#'.$record['id'].'").innerHTML = "'.$result['error'].'"</script>';
+                echo '<script>document.querySelector("#'.$record['id'].'").innerHTML = "Error creting Invoice in Xero"</script>';
 
-                echo "Error: " . $result['error'];
+               // echo "Error: " . $result['error'];
             }
 
-            break;
+            break; // exit after one iteration
             echo "<br/><br/><br/>";
      }
  
@@ -587,31 +639,52 @@ function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber,
    
 }
 
-use Carbon\Carbon;
+
 
 function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_line_items, $dueDays = 30) {
 
-    $date = Carbon::now()->format('Y-m-d'); // Current date
-    $dueDate = Carbon::now()->addDays($dueDays)->format('Y-m-d'); // Due date
+    $xeroContactID = '5b96e86b-418e-48e8-8949-308c14aec278';
 
     // Prepare the invoice data
-    $invoice = [
-        'Type' => 'ACCREC',  // 'ACCREC' for Accounts Receivable or 'ACCPAY' for Accounts Payable
-        'Contact' => [
-            'ContactID' => $xeroContactID,  // Ensure this is a valid ContactID
+    $xfinal_line_items = [
+        [
+            'Description' => 'Transcend 1TB SSD',  // Description from the example
+            'Quantity' => 2,
+            'UnitAmount' => 30.00,
+            'AccountCode' => '200',  // Ensure this is a valid Xero account code
+            'TaxType' => 'NONE',  // Tax type from the example
+            'LineAmount' => 60.00  // LineAmount (calculated as Quantity * UnitAmount)
         ],
-        'LineItems' => $final_line_items,  // Ensure final_line_items is correctly formatted
-        'Date' => $date,  // Invoice date
-        'DueDate' => $dueDate,  // Due date (default 30 days from now)
+        [
+            'Description' => '2CC Brown Acme Tires',  // Description from the example
+            'Quantity' => 2,
+            'UnitAmount' => 20.00,
+            'AccountCode' => '200',  // Ensure this is a valid Xero account code
+            'TaxType' => 'NONE',  // Tax type from the example
+            'LineAmount' => 40.00  // LineAmount (calculated as Quantity * UnitAmount)
+        ]
+        ];
+            echo '<pre>';
+            print_r($final_line_items);
+            echo '</pre>';
+    $invoice = [
+        'Invoices' => [
+            [
+                'Type' => 'ACCREC',  // 'ACCREC' for Accounts Receivable
+                'Contact' => [
+                    'ContactID' =>$xeroContactID
+                ],
+                'LineItems' =>$final_line_items ,  // Ensure final_line_items is correctly formatted
+                'Date' => (new DateTime())->format('Y-m-d'),  
+                'DueDate' => '2018-12-10',  
+                'Reference' => 'App Design',  
+                'Status' => 'DRAFT'  // AUTHORISED, PAID, VOID, CANCELLED, SUBMITTED
+                // "CurrencyCode" => "NZD" curently allows USD
+            ]
+        ]
     ];
 
-    echo "<pre>";
-    print_r($final_line_items);
-    echo "</pre>";
-    // Ensure the LineItems is not empty and properly formatted
-    if (empty($final_line_items)) {
-        exit("Error: LineItems cannot be empty.");
-    }
+
 
     // Create a Guzzle client to send the request
     $client = new Client([
@@ -624,10 +697,11 @@ function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_lin
     ]);
 
     try {
-        // Send the POST request to Xero API to create the invoice
+       // Send the POST request to Xero API to create the invoice
         $response = $client->post('Invoices', [
             'json' => $invoice,  // Send the invoice data as JSON
         ]);
+       // $response = $client->get('Invoices');
 
         // Decode the response
         $data = json_decode($response->getBody(), true);
@@ -639,86 +713,38 @@ function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_lin
 
         // Check if the invoice was created successfully
         if (isset($data['Invoices']) && count($data['Invoices']) > 0) {
-            echo "Invoice created successfully in Xero. Invoice ID: " . $data['Invoices'][0]['InvoiceID'];
+            echo "Invoice created successfully in Xero. Invoice Number: " . $data['Invoices'][0]['InvoiceNumber'];
+            return $data['Invoices'][0]['InvoiceNumber'];
         } else {
             echo "Error creating invoice: " . json_encode($data);
         }
     } catch (\Exception $e) {
         // Catch and display any errors from Guzzle request
-        echo "Request error: " . $e->getMessage();
+        echo "Request error: ";
+        echo "<pre>";
+        print_r( $e->getMessage());
+        echo "</pre>";
     }
 }
-
-
-
-/*
-function create_xero_invoice($xeroContactID, $tenantID, $provider, $final_line_items, $accessToken, $dueDays = 30) {
-
-    $final_line_items = [
-        [
-            'Description' => 'Item Description',
-            'Quantity' => 1,
-            'UnitAmount' => 100.00,
-            'AccountCode' => '200',  // Xero account code for this item
-            // 'TaxType' => 'OUTPUT',   // Tax type like 'OUTPUT' or 'NONE'
-        ],
-        // Add more items as needed
-    ];
-
-        // echo '<pre>';
-        // print_r($final_line_items);
-        // echo '</pre>';
-
-    // Create the invoice data
-    $invoice = [
-        'Type' => 'ACCREC',  // 'ACCREC' for Accounts Receivable or 'ACCPAY' for Accounts Payable
-        'Contact' => [
-            'ContactID' => $xeroContactID,  
-        ],
-        'LineItems' => $final_line_items,  // Line items (array of items on the invoice)
-        'Date' => date('Y-m-d'),
-        'DueDate' => date('Y-m-d', strtotime("+$dueDays days")),  // Due date (default 30 days from now)
-      //  'Reference' => $reference,  // Invoice reference (optional)
-    ];
     
-    $options = [
-        'headers' => [
-            'xero-tenant-id' => $tenantID,
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json'
-        ],
-        'body' => json_encode($invoice)
-    ];
-
-    $createUrl = 'https://api.xero.com/api.xro/2.0/Invoices';
-    try {
-        $request = $provider->getAuthenticatedRequest('POST', $createUrl, $accessToken, $options);
-        $response = $provider->getParsedResponse($request);
-        if (isset($response['Status']) && $response['Status'] == 'OK') {
-            echo("Invoice created successfully in Xero. Contact: $xeroContactID");
-        }
-    } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
-       // logMessage("Error creating Invoice in Xero: " . $e->getMessage());
-        exit('Error creating Invoice: ' . $e->getMessage());
-    }
-
-}
-    */
 
 function update_xero_invoice_tracker($InvoiceTrackerTableEndPoint, $data, $app_id, $api_key){
-    
+    echo "<pre>";
+    print_r( $data);
+    echo "</pre>";
 
     // Define the record ID and the fields to update
-    $knackRecordID = $data['invTrackerRecId'];
+    $knackRecordID = $data[0]['invTrackerRecId'];
     $xeroLastUpdated = date('Y-m-d H:i:s');
 
     // Define the URL for the API request. $CustomersTableEndPoint is "https://api.knack.com/v1/objects/object_1/records"
-    $url = $CustomersTableEndPoint . '/' . $knackRecordID;
+    $url = $InvoiceTrackerTableEndPoint . '/' . $knackRecordID;
 
     // Define the data to be sent
     $data = [
-        'field_226' => $data['invoiceNumber'], //Xero invoice tracker name
-        'field_235' => $data['invoiceNumber']." / Created Darft Invoice", // Status note
+      //  'field_226' => $data[0]['invoiceNumber'], //Xero invoice tracker name
+        'field_235' => $data[1]['invoiceNumber']." / Created Draft Invoice", // Status note
+        'field_228' => $xeroLastUpdated,
         'field_232' => null, //Empty the Ready to create field
         'field_234' => null //Empty the Job card field
     ];
