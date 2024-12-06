@@ -301,7 +301,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
 
          $final_line_items[]=[
 
-            'Description' => $dispatch_method, 
+            'Description' => strip_tags($dispatch_method), //remove html like <span class="".........
             'Quantity' => 1,
             'UnitAmount' => $dispatchCost,
             'AccountCode' => '200',  // Ensure this is a valid Xero account code
@@ -315,13 +315,14 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          $prod_line_items = read_product_line_items($ProdLineItemsTableEndPoint, $job_id, $app_id, $api_key); 
           
          foreach($prod_line_items['records'] as $prod){
+
             $final_line_items[]=[
-                'Description' => $prod['field_85'], 
+                'Description' => strip_tags($prod['field_85']), 
                 'Quantity' => $prod['field_54'],
-                'UnitAmount' => floatval(str_replace('$', '', $prod['field_56'])),
+                'UnitAmount' => convertCurrency($prod['field_55']),
                 'AccountCode' => '200',  // Ensure this is a valid Xero account code
                 'TaxType' => 'NONE',  // Tax type from the example, none means exempted
-                'LineAmount' => floatval(str_replace('$', '', $prod['field_57'])) ??  $prod['field_54'] * floatval(str_replace('$', '', $prod['field_56']))  // LineAmount (calculated as Quantity * UnitAmount)
+                'LineAmount' => convertCurrency($prod['field_57']) ??  $prod['field_54'] * convertCurrency($prod['field_55'])  // LineAmount (calculated as Quantity * UnitAmount)
             ];
 
          }
@@ -332,13 +333,14 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          echo '<br/># Fetching associated service line items.';
          $service_line_items = read_service_line_items($ServLineItemsTableEndPoint, $job_id, $app_id, $api_key);
          foreach($service_line_items['records'] as $serv){
+           
             $final_line_items[]=[
-                'Description' => $serv['field_77'], 
+                'Description' => strip_tags($serv['field_77']), 
                 'Quantity' => $serv['field_79'],
-                'UnitAmount' =>floatval(str_replace('$', '',  $serv['field_83'])),
+                'UnitAmount' =>convertCurrency($serv['field_80']),
                 'AccountCode' => '200',  // Ensure this is a valid Xero account code
                 'TaxType' => 'NONE',  // Tax type from the example, none means exempted
-                'LineAmount' =>floatval(str_replace('$', '', $serv['field_84'])) ?? $serv['field_79'] * floatval(str_replace('$', '', $serv['field_83']))  // LineAmount (calculated as Quantity * UnitAmount)
+                'LineAmount' =>convertCurrency($serv['field_84']) ?? $serv['field_79'] * convertCurrency($serv['field_80'])  // LineAmount (calculated as Quantity * UnitAmount)
             ];
 
          }
@@ -524,6 +526,7 @@ function find_job_record($JobCardTableEndPoint, $api_key, $app_id, $jobNumber)
 
 function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardId, $app_id, $api_key) {
     // Filter criteria with dynamic $jobCardNumber
+    echo "job card id is:". $jobCardId;
     $filter_criteria = [
         'match' => 'and',
         'rules' => [
@@ -583,6 +586,7 @@ function read_product_line_items($ProdLineItemsTableEndPoint, $jobCardId, $app_i
 
 
 function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber, $app_id, $api_key){
+    echo "job card id is:". $jobCardNumber;
     // Filter criteria 
     $filter_criteria = [
        'match' => 'and',
@@ -639,11 +643,15 @@ function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber,
    
 }
 
-
+function convertCurrency($amount) {
+    // Remove any non-numeric characters except the decimal point
+    $cleanAmount = preg_replace('/[^\d.]/', '', $amount);
+    return number_format((float)$cleanAmount, 2, '.', '');
+}
 
 function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_line_items, $dueDays = 30) {
 
-    $xeroContactID = '5b96e86b-418e-48e8-8949-308c14aec278';
+    $xeroContactID = '8a8fb8ad-e6ff-4c3e-b871-515124e40840';
 
     // Prepare the invoice data
     $xfinal_line_items = [
@@ -664,7 +672,7 @@ function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_lin
             'LineAmount' => 40.00  // LineAmount (calculated as Quantity * UnitAmount)
         ]
         ];
-            echo '<pre>';
+            echo '<pre> final line items are';
             print_r($final_line_items);
             echo '</pre>';
     $invoice = [
