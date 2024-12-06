@@ -27,6 +27,8 @@ $InvoiceTrackerTableEndPoint = 'https://api.knack.com/v1/objects/object_21/recor
 $CustomersTableEndPoint = 'https://api.knack.com/v1/objects/object_1/records';
 $ServLineItemsTableEndPoint = 'https://api.knack.com/v1/objects/object_10/records';
 $ProdLineItemsTableEndPoint = 'https://api.knack.com/v1/objects/object_8/records';
+$KnackSysAuditLogEndPoint = 'https://api.knack.com/v1/objects/object_20/records';
+
 
 $api_key = '5731568a-75ed-4a6e-b906-7c3cda415405';
 $app_id = '64ec0e7df4070c0028ff4a07';
@@ -298,6 +300,25 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          
          // Step 3: Extract the cost (second part) and remove the dollar sign
          $dispatchCost = floatval(str_replace('$', '', $parts[1])); // 7.00
+
+        //  $final_line_items[]=[
+
+        //     'Description' => $job['field_376'], 
+        //     'Quantity' => 0,
+        //     'UnitAmount' =>0,
+        //     'AccountCode' => '200', 
+        //     'TaxType' => 'NONE',  
+        //     'LineAmount' => 0  
+        // ];
+        $final_line_items[] = [
+            'Description' => "Job: $jobNumber \nRego: " . strtoupper($job['field_18']) . " \nVIN: " . $job['field_17'] . " \nExemption: " . $job['field_26'] . " \nCustomer: " .  strip_tags($job['field_25']),
+            'Quantity' => 0,
+            'UnitAmount' => 0,
+            'AccountCode' => '200',  // Ensure this is a valid Xero account code
+            'TaxType' => 'NONE',  // Tax type from the example, none means exempted
+            'LineAmount' => 0  // LineAmount (calculated as Quantity * UnitAmount)
+        ];
+        
 
          $final_line_items[]=[
 
