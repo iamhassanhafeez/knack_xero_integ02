@@ -311,7 +311,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
         //     'LineAmount' => 0  
         // ];
         $final_line_items[] = [
-            'Description' => "Job: $jobNumber \nRego: " . strtoupper($job['field_18']) . " \nVIN: " . $job['field_17'] . " \nExemption: " . $job['field_26'] . " \nCustomer: " .  strip_tags($job['field_25']),
+            'Description' =>strip_tags( "Job: $jobNumber \nRego: " . strtoupper($job['field_18']) . " \nVIN: " . $job['field_17'] . " \nExemption: " . $job['field_26'] . " \nCustomer: " .  $job['field_25']),
             'Quantity' => 0,
             'UnitAmount' => 0,
             'AccountCode' => '200',  // Ensure this is a valid Xero account code
