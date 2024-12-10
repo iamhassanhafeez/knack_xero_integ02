@@ -410,7 +410,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
             }
 
             //Create an audit log in table: System Audit Log
-            //update_system_audit_log ($KnackSysAuditLogEndPoint, $data, $app_id, $api_key)
+            update_system_audit_log ($KnackSysAuditLogEndPoint, $knack_data_push_to_xero, $app_id, $api_key);
 
             break; // exit after one iteration
             echo "<br/><br/><br/>";
@@ -831,7 +831,7 @@ function update_system_audit_log ($KnackSysAuditLogEndPoint, $data, $app_id, $ap
     $ch = curl_init($url);
 
     // Set cURL options
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "X-Knack-Application-Id: $app_id",
