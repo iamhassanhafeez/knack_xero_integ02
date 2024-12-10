@@ -848,8 +848,8 @@ function update_system_audit_log ($KnackSysAuditLogEndPoint, $data, $app_id, $ap
         echo 'Error:' . curl_error($ch);
     } else {
         // Log the successful fetch of customer data
-        logMessage("Customer record successfully updated in Knack (Invoice Tracker Table) table. Record ID: $knackRecordID");
-        echo ("<br/>Customer record successfully updated in Knack (Invoice Tracker Table) table. Record ID: $knackRecordID <br/><br/>");
+        logMessage("Invoice Record successfully created in Knack (System Audit Log) table.");
+        echo ("<br/>Invoice Record successfully created in Knack (System Audit Log) table. <br/><br/>");
     }
 
     // Close cURL
