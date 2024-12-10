@@ -183,8 +183,7 @@ $xfinal_line_items = [
 
 
 ///Call functionality
-xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken, $tenantID, $provider
-);
+xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken, $tenantID, $provider, $KnackSysAuditLogEndPoint);
 
 //=========================>>>>>>>>>>> DEFINE FUNCTIONALITY <<<<<<<<<<<<============================================
 //==================================================================================================================
@@ -197,8 +196,7 @@ function logMessage($message)
     file_put_contents($logFile, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
 }
 
-function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken, $tenantID, $provider
-){
+function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken, $tenantID, $provider, $KnackSysAuditLogEndPoint){
     $all_records = [];
     $page = 1;
     $per_page = 100; // You can adjust this if needed (max 100 per page)
@@ -301,15 +299,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          // Step 3: Extract the cost (second part) and remove the dollar sign
          $dispatchCost = floatval(str_replace('$', '', $parts[1])); // 7.00
 
-        //  $final_line_items[]=[
-
-        //     'Description' => $job['field_376'], 
-        //     'Quantity' => 0,
-        //     'UnitAmount' =>0,
-        //     'AccountCode' => '200', 
-        //     'TaxType' => 'NONE',  
-        //     'LineAmount' => 0  
-        // ];
+        
         $final_line_items[] = [
             'Description' =>strip_tags( "Job: $jobNumber \nRego: " . strtoupper($job['field_18']) . " \nVIN: " . $job['field_17'] . " \nExemption: " . $job['field_26'] . " \nCustomer: " .  $job['field_25']),
             'Quantity' => 0,
@@ -417,8 +407,10 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
             } else {
                 echo '<script>document.querySelector("#'.$record['id'].'").innerHTML = "Error creting Invoice in Xero"</script>';
 
-               // echo "Error: " . $result['error'];
             }
+
+            //Create an audit log in table: System Audit Log
+            //update_system_audit_log ($KnackSysAuditLogEndPoint, $data, $app_id, $api_key)
 
             break; // exit after one iteration
             echo "<br/><br/><br/>";
@@ -675,24 +667,24 @@ function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_lin
     $xeroContactID = '8a8fb8ad-e6ff-4c3e-b871-515124e40840';
 
     // Prepare the invoice data
-    $xfinal_line_items = [
-        [
-            'Description' => 'Transcend 1TB SSD',  // Description from the example
-            'Quantity' => 2,
-            'UnitAmount' => 30.00,
-            'AccountCode' => '200',  // Ensure this is a valid Xero account code
-            'TaxType' => 'NONE',  // Tax type from the example
-            'LineAmount' => 60.00  // LineAmount (calculated as Quantity * UnitAmount)
-        ],
-        [
-            'Description' => '2CC Brown Acme Tires',  // Description from the example
-            'Quantity' => 2,
-            'UnitAmount' => 20.00,
-            'AccountCode' => '200',  // Ensure this is a valid Xero account code
-            'TaxType' => 'NONE',  // Tax type from the example
-            'LineAmount' => 40.00  // LineAmount (calculated as Quantity * UnitAmount)
-        ]
-        ];
+    // $xfinal_line_items = [
+    //     [
+    //         'Description' => 'Transcend 1TB SSD',  // Description from the example
+    //         'Quantity' => 2,
+    //         'UnitAmount' => 30.00,
+    //         'AccountCode' => '200',  // Ensure this is a valid Xero account code
+    //         'TaxType' => 'NONE',  // Tax type from the example
+    //         'LineAmount' => 60.00  // LineAmount (calculated as Quantity * UnitAmount)
+    //     ],
+    //     [
+    //         'Description' => '2CC Brown Acme Tires',  // Description from the example
+    //         'Quantity' => 2,
+    //         'UnitAmount' => 20.00,
+    //         'AccountCode' => '200',  // Ensure this is a valid Xero account code
+    //         'TaxType' => 'NONE',  // Tax type from the example
+    //         'LineAmount' => 40.00  // LineAmount (calculated as Quantity * UnitAmount)
+    //     ]
+    //     ];
             echo '<pre> final line items are';
             print_r($final_line_items);
             echo '</pre>';
@@ -758,9 +750,9 @@ function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_lin
     
 
 function update_xero_invoice_tracker($InvoiceTrackerTableEndPoint, $data, $app_id, $api_key){
-    echo "<pre>";
-    print_r( $data);
-    echo "</pre>";
+    // echo "<pre>";
+    // print_r( $data);
+    // echo "</pre>";
 
     // Define the record ID and the fields to update
     $knackRecordID = $data[0]['invTrackerRecId'];
@@ -805,5 +797,63 @@ function update_xero_invoice_tracker($InvoiceTrackerTableEndPoint, $data, $app_i
 
     // Close cURL
     curl_close($ch);
+
+}
+
+function update_system_audit_log ($KnackSysAuditLogEndPoint, $data, $app_id, $api_key){
+
+   
+    echo "<pre>";
+    print_r( $data);
+    echo "</pre>";
+
+    // Define the record ID and the fields to update
+    $knackRecordID = $data[0]['invTrackerRecId'];
+    $xeroLastUpdated = date('Y-m-d H:i:s');
+
+    // Define the URL for the API request. $CustomersTableEndPoint is "https://api.knack.com/v1/objects/object_1/records"
+    $url = $KnackSysAuditLogEndPoint;
+
+    // Define the data to be sent
+    $data = [
+        "field_174" => "Job Dashboard> Xero Invoice",
+        "field_176" => date("Y-m-d H:i:s"),
+        "field_177" => $data[0]['jobNumber'],
+        "field_178" => "Invoice creation fro Xero invoice tracker. Initiated by Admin in App Dashboard.",
+        "field_179" => $data[1]['invoiceNumber'],
+        "field_180" => $data[0]['customerNumber'],
+        "field_182" => "Invoice Tracker Rec Modified:".$knackRecordID,
+        "field_183" => "Xero creation start / last updated field(s) modified:".$xeroLastUpdated,
+        "field_184" => "Xero invoice number:".$data[0]['jobNumber']."|For customer:".$data[0]['customerNumber']."|Created/Updated on:".$xeroLastUpdated
+    ];
+
+    // Initialize cURL
+    $ch = curl_init($url);
+
+    // Set cURL options
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "X-Knack-Application-Id: $app_id",
+        "X-Knack-REST-API-Key: $api_key",
+        "Content-Type: application/json"
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+    // Execute the request
+    $response = curl_exec($ch);
+
+    // Check for errors
+    if (curl_errno($ch)) {
+        echo 'Error:' . curl_error($ch);
+    } else {
+        // Log the successful fetch of customer data
+        logMessage("Customer record successfully updated in Knack (Invoice Tracker Table) table. Record ID: $knackRecordID");
+        echo ("<br/>Customer record successfully updated in Knack (Invoice Tracker Table) table. Record ID: $knackRecordID <br/><br/>");
+    }
+
+    // Close cURL
+    curl_close($ch);
+
 
 }
