@@ -824,7 +824,7 @@ function update_system_audit_log ($KnackSysAuditLogEndPoint, $data, $app_id, $ap
         "field_180" => $data[0]['customerNumber'],
         "field_182" => "Invoice Tracker Rec Modified:".$knackRecordID,
         "field_183" => "Xero creation start / last updated field(s) modified:".$xeroLastUpdated,
-        "field_184" => "Xero invoice number:".$data[0]['jobNumber']."|For customer:".$data[0]['customerNumber']."|Created/Updated on:".$xeroLastUpdated
+        "field_184" => "Xero invoice number:".$data[1]['invoiceNumber']."|For customer:".$data[0]['customerNumber']."|Created/Updated on:".$xeroLastUpdated."|Job Number:".$data[0]['jobNumber']
     ];
 
     // Initialize cURL
