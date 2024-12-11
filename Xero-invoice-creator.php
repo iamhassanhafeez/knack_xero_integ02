@@ -698,9 +698,11 @@ function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_lin
                 'LineItems' =>$final_line_items ,  // Ensure final_line_items is correctly formatted
                 'Date' => (new DateTime())->format('Y-m-d'),  
                 'DueDate' => '2018-12-10',  
-                'Reference' => 'App Design',  
-                'Status' => 'DRAFT'  // AUTHORISED, PAID, VOID, CANCELLED, SUBMITTED
+                'Reference' => 'App Design',  // job number | short vin number
+                'Status' => 'DRAFT',  // AUTHORISED, PAID, VOID, CANCELLED, SUBMITTED
                 // "CurrencyCode" => "NZD" curently allows USD
+                //"BrandingThemeID" => "38523938-df80-40e8-b42c-cc2bae4e961d",
+
             ]
         ]
     ];
