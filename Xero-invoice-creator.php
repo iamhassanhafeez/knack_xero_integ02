@@ -286,7 +286,8 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
 
          //================ Fetching Xero Setup Info
          $xero_setup_info_data = fetch_xero_setup_info($XeroSetupTableEndPoint, $app_id, $api_key);
-         $xero_setup_info = $xero_setup_info_data['records'];       
+         $xero_setup_info = $xero_setup_info_data['records']; 
+         $XeAccNo = $xero_setup_info[0]['field_384'];   
 
          //============== Fetch job from Knack
          echo '<br/><b style="color:#0f1d68;">### Started Invoicing Process For The Job:'.$jobNumber.'</b>';
@@ -311,7 +312,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
             'Description' =>strip_tags( "Job: $jobNumber \nRego: " . strtoupper($job['field_18']) . " \nVIN: " . $job['field_17'] . " \nExemption: " . $job['field_26'] . " \nCustomer: " .  $job['field_25']),
             'Quantity' => 0,
             'UnitAmount' => 0,
-            'AccountCode' => '200',  // Ensure this is a valid Xero account code
+            'AccountCode' => $XeAccNo,  // Ensure this is a valid Xero account code
             'TaxType' => 'NONE',  // Tax type from the example, none means exempted
             'LineAmount' => 0  // LineAmount (calculated as Quantity * UnitAmount)
         ];
@@ -322,7 +323,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
             'Description' => strip_tags($dispatch_method), //remove html like <span class="".........
             'Quantity' => 1,
             'UnitAmount' => $dispatchCost,
-            'AccountCode' => '200',  // Ensure this is a valid Xero account code
+            'AccountCode' => $XeAccNo,  // Ensure this is a valid Xero account code
             'TaxType' => 'NONE',  // Tax type from the example, none means exempted
             'LineAmount' => $dispatchCost  // LineAmount (calculated as Quantity * UnitAmount)
         ];
@@ -338,7 +339,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
                 'Description' => strip_tags($prod['field_85']), 
                 'Quantity' => $prod['field_54'],
                 'UnitAmount' => convertCurrency($prod['field_55']),
-                'AccountCode' => '200',  // Ensure this is a valid Xero account code
+                'AccountCode' => $XeAccNo,  // Ensure this is a valid Xero account code
                 'TaxType' => 'NONE',  // Tax type from the example, none means exempted
                 'LineAmount' => convertCurrency($prod['field_57']) ??  $prod['field_54'] * convertCurrency($prod['field_55'])  // LineAmount (calculated as Quantity * UnitAmount)
             ];
@@ -356,7 +357,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
                 'Description' => strip_tags($serv['field_77']), 
                 'Quantity' => $serv['field_79'],
                 'UnitAmount' =>convertCurrency($serv['field_80']),
-                'AccountCode' => '200',  // Ensure this is a valid Xero account code
+                'AccountCode' => $XeAccNo,  // Ensure this is a valid Xero account code
                 'TaxType' => 'NONE',  // Tax type from the example, none means exempted
                 'LineAmount' =>convertCurrency($serv['field_84']) ?? $serv['field_79'] * convertCurrency($serv['field_80'])  // LineAmount (calculated as Quantity * UnitAmount)
             ];
@@ -394,7 +395,7 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
 
             //===================== Knack and Create Xero Invoice
             $dueDays = 30;
-            $result = create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_line_items, $dueDays = 30, $xero_setup_info);
+            $result = create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_line_items, $dueDays = 30, $xero_setup_info, $knack_data_push_to_xero);
            
             $knack_data_push_to_xero[] = [
                 'invoiceNumber'             => $result,
@@ -710,7 +711,7 @@ function fetch_xero_setup_info($XeroSetupTableEndPoint, $app_id, $api_key){
     
 }
 
-function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_line_items, $dueDays = 30, $xero_setup_info) {
+function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_line_items, $dueDays = 30, $xero_setup_info, $knack_data_push_to_xero) {
 
     $xeroContactID = '8a8fb8ad-e6ff-4c3e-b871-515124e40840';
     $dueDate = (new DateTime())->modify("+$dueDays days")->format('Y-m-d');
@@ -729,7 +730,7 @@ function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_lin
                 'LineItems' =>$final_line_items ,  // Ensure final_line_items is correctly formatted
                 'Date' => (new DateTime())->format('Y-m-d'),  
                 'DueDate' => $dueDate,  
-                'Reference' => $final_line_items[0]['vinNumber'],  // job number | short vin number
+                'Reference' => $knack_data_push_to_xero[0]['jobNumber'].'|'.$knack_data_push_to_xero[0]['vinNumber']?? $knack_data_push_to_xero[0]['jobNumber'],  // job number | short vin number
                 'Status' => 'DRAFT',  // AUTHORISED, PAID, VOID, CANCELLED, SUBMITTED
                 // "CurrencyCode" => "NZD" curently allows USD
                 "BrandingThemeID" => $xero_setup_info[0]['field_387'],
