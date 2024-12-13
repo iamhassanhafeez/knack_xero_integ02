@@ -28,6 +28,8 @@ $CustomersTableEndPoint = 'https://api.knack.com/v1/objects/object_1/records';
 $ServLineItemsTableEndPoint = 'https://api.knack.com/v1/objects/object_10/records';
 $ProdLineItemsTableEndPoint = 'https://api.knack.com/v1/objects/object_8/records';
 $KnackSysAuditLogEndPoint = 'https://api.knack.com/v1/objects/object_20/records';
+$XeroSetupTableEndPoint = 'https://api.knack.com/v1/objects/object_39/records';
+
 
 
 $api_key = '5731568a-75ed-4a6e-b906-7c3cda415405';
@@ -183,7 +185,7 @@ $xfinal_line_items = [
 
 
 ///Call functionality
-xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken, $tenantID, $provider, $KnackSysAuditLogEndPoint);
+xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken, $tenantID, $provider, $KnackSysAuditLogEndPoint, $XeroSetupTableEndPoint);
 
 //=========================>>>>>>>>>>> DEFINE FUNCTIONALITY <<<<<<<<<<<<============================================
 //==================================================================================================================
@@ -196,7 +198,7 @@ function logMessage($message)
     file_put_contents($logFile, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
 }
 
-function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken, $tenantID, $provider, $KnackSysAuditLogEndPoint){
+function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersTableEndPoint, $JobCardTableEndPoint, $ProdLineItemsTableEndPoint, $ServLineItemsTableEndPoint, $api_key, $app_id, $accessToken, $tenantID, $provider, $KnackSysAuditLogEndPoint, $XeroSetupTableEndPoint){
     $all_records = [];
     $page = 1;
     $per_page = 100; // You can adjust this if needed (max 100 per page)
@@ -280,6 +282,11 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
                  <td>'.$readyToCreate.'</td>
                  <td id="'.$record['id'].'">Creating...</td>
                 </tr>';
+
+
+         //================ Fetching Xero Setup Info
+         $xero_setup_info_data = fetch_xero_setup_info($XeroSetupTableEndPoint, $app_id, $api_key);
+         $xero_setup_info = $xero_setup_info_data['records'];       
 
          //============== Fetch job from Knack
          echo '<br/><b style="color:#0f1d68;">### Started Invoicing Process For The Job:'.$jobNumber.'</b>';
@@ -385,12 +392,10 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
             $xeroContactID = $customer['field_382'];
             
 
-            //===================== Create Xero Invoice
+            //===================== Knack and Create Xero Invoice
             $dueDays = 30;
-            $result = create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_line_items, $dueDays = 30);
-            echo "<pre> The invoice number is:";
-            print_r($result);
-            echo"</pre>";
+            $result = create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_line_items, $dueDays = 30, $xero_setup_info);
+           
             $knack_data_push_to_xero[] = [
                 'invoiceNumber'             => $result,
                 'xeroInvCreationStart'      => date('Y-m-d'),
@@ -662,32 +667,58 @@ function convertCurrency($amount) {
     return number_format((float)$cleanAmount, 2, '.', '');
 }
 
-function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_line_items, $dueDays = 30) {
+function fetch_xero_setup_info($XeroSetupTableEndPoint, $app_id, $api_key){
+
+   // Initialize cURL
+   $ch = curl_init();
+
+   // Set cURL options
+   $url = $XeroSetupTableEndPoint;
+   curl_setopt($ch, CURLOPT_URL, $url);
+   curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+   curl_setopt($ch, CURLOPT_HTTPHEADER, [
+       'X-Knack-Application-Id: ' . $app_id,
+       'X-Knack-REST-API-Key: ' . $api_key,
+       'Content-Type: application/json',
+   ]);
+
+   // Execute the request
+   $response = curl_exec($ch);
+
+   // Check for errors
+   if (curl_errno($ch)) {
+       echo 'Error: ' . curl_error($ch);
+   } else {
+       // Check HTTP response code
+       $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+       if ($http_code == 200) {
+           // Decode the JSON response
+           $response_data = json_decode($response, true); // Assuming the response is in JSON format
+
+           $message = "<br/>Xero setup info obtained from the relevant table.";
+           logMessage($message);
+           echo ("<br/>> Xero setup info found.");
+       } else {
+           echo "Request failed with HTTP status code: $http_code";
+       }
+   }
+
+   // Close cURL
+   curl_close($ch);
+
+   return $response_data;
+    
+}
+
+function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_line_items, $dueDays = 30, $xero_setup_info) {
 
     $xeroContactID = '8a8fb8ad-e6ff-4c3e-b871-515124e40840';
+    $dueDate = (new DateTime())->modify("+$dueDays days")->format('Y-m-d');
 
-    // Prepare the invoice data
-    // $xfinal_line_items = [
-    //     [
-    //         'Description' => 'Transcend 1TB SSD',  // Description from the example
-    //         'Quantity' => 2,
-    //         'UnitAmount' => 30.00,
-    //         'AccountCode' => '200',  // Ensure this is a valid Xero account code
-    //         'TaxType' => 'NONE',  // Tax type from the example
-    //         'LineAmount' => 60.00  // LineAmount (calculated as Quantity * UnitAmount)
-    //     ],
-    //     [
-    //         'Description' => '2CC Brown Acme Tires',  // Description from the example
-    //         'Quantity' => 2,
-    //         'UnitAmount' => 20.00,
-    //         'AccountCode' => '200',  // Ensure this is a valid Xero account code
-    //         'TaxType' => 'NONE',  // Tax type from the example
-    //         'LineAmount' => 40.00  // LineAmount (calculated as Quantity * UnitAmount)
-    //     ]
-    //     ];
-            echo '<pre> final line items are';
-            print_r($final_line_items);
-            echo '</pre>';
+    echo "<pre>";
+    print_r ($xero_setup_info);
+    echo "</pre>";
+
     $invoice = [
         'Invoices' => [
             [
@@ -697,11 +728,11 @@ function create_xero_invoice($xeroContactID, $tenantID, $accessToken, $final_lin
                 ],
                 'LineItems' =>$final_line_items ,  // Ensure final_line_items is correctly formatted
                 'Date' => (new DateTime())->format('Y-m-d'),  
-                'DueDate' => '2018-12-10',  
-                'Reference' => 'App Design',  // job number | short vin number
+                'DueDate' => $dueDate,  
+                'Reference' => $final_line_items[0]['vinNumber'],  // job number | short vin number
                 'Status' => 'DRAFT',  // AUTHORISED, PAID, VOID, CANCELLED, SUBMITTED
                 // "CurrencyCode" => "NZD" curently allows USD
-                //"BrandingThemeID" => "38523938-df80-40e8-b42c-cc2bae4e961d",
+                "BrandingThemeID" => $xero_setup_info[0]['field_387'],
 
             ]
         ]
