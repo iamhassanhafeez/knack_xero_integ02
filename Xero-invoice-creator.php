@@ -298,6 +298,9 @@ function xero_invoice_tracker_in_knack($InvoiceTrackerTableEndPoint, $CustomersT
          $job_id = $job['id'];
          $dispatch_field_value = $job['field_99']; // E20 Courier - $7.00
 
+         echo "<pre>";
+         print_r($job_id);
+         echo "</pre>";
          // Step 1: Split the string at the ' - ' separator
          $parts = explode(' - ', $dispatch_field_value);
          
@@ -611,7 +614,7 @@ function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber,
        'match' => 'and',
        'rules' => [
            [
-               'field' => 'field_58',  // job card number
+               'field' => 'field_81',  // job card number
                'operator' => 'is',
                'value' =>  $jobCardNumber,
            ],

@@ -17,7 +17,7 @@ $api_key = '5731568a-75ed-4a6e-b906-7c3cda415405';
 $app_id = '64ec0e7df4070c0028ff4a07';
 
 
-$job_id = "2695";
+$job_id = "66b062e489b9350028eb3488";
 $XeAccNo = "xe2200";
 $final_line_items = [];
 
@@ -157,7 +157,7 @@ function read_service_line_items($ServiceLineItemsTableEndPoint, $jobCardNumber,
        'match' => 'and',
        'rules' => [
            [
-               'field' => 'field_58',  // job card number
+               'field' => 'field_81',  // job card number
                'operator' => 'is',
                'value' =>  $jobCardNumber,
            ],
