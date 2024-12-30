@@ -36,6 +36,9 @@ $api_key = 'bdeafb2e-d2ad-4ce2-be08-174f9517ad2c';
 $app_id = '63e747ae1e022e00107645a7';
 
 
+
+
+
 // Let's establish a connection with Xero first
 
 // If we don't have an authorization code then get one
@@ -126,62 +129,6 @@ if (!isset($_GET['code'])) {
     echo "</div>";
 }
     
-
-
-$xfinal_line_items = [
-    "Id" => "c82e685b-8c64-43ee-8b27-996c7dc743f5",
-    "Status" => "OK",
-    "ProviderName" => "API Explorer",
-    "DateTimeUTC" => "/Date(1732871175237)/",
-    "Invoices" => [
-        [
-            "Type" => "ACCREC",
-            "InvoiceID" => "14e52695-7c90-413f-b6ea-e32a79145665",
-            "InvoiceNumber" => "INV-0001",
-            "Reference" => "",
-            "Payments" => [],
-            "CreditNotes" => [],
-            "Prepayments" => [],
-            "Overpayments" => [],
-            "AmountDue" => 456,
-            "AmountPaid" => 0,
-            "AmountCredited" => 0,
-            "CurrencyRate" => 1,
-            "IsDiscounted" => false,
-            "HasAttachments" => false,
-            "InvoiceAddresses" => [],
-            "HasErrors" => false,
-            "InvoicePaymentServices" => [],
-            "Contact" => [
-                "ContactID" => "170473c3-c21c-4016-af7a-4bb32008664c",
-                "Name" => "Hassan hafeez",
-                "Addresses" => [],
-                "Phones" => [],
-                "ContactGroups" => [],
-                "ContactPersons" => [],
-                "HasValidationErrors" => false
-            ],
-            "DateString" => "2024-11-29T00:00:00",
-            "Date" => "/Date(1732838400000+0000)/",
-            "DueDateString" => "2024-12-06T00:00:00",
-            "DueDate" => "/Date(1733443200000+0000)/",
-            "BrandingThemeID" => "38523938-df80-40e8-b42c-cc2bae4e961d",
-            "Status" => "DRAFT",
-            "LineAmountTypes" => "NoTax",
-            "LineItems" => [],
-            "SubTotal" => 456,
-            "TotalTax" => 0,
-            "Total" => 456,
-            "UpdatedDateUTC" => "/Date(1732871161967+0000)/",
-            "CurrencyCode" => "NZD"
-        ]
-    ]
-];
-
-
-
-//use Carbon\Carbon;
-
 
 
 ///Call functionality
