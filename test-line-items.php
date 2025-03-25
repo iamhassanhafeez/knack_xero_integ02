@@ -13,8 +13,8 @@ $XeroSetupTableEndPoint = 'https://api.knack.com/v1/objects/object_39/records';
 
 
 
-$api_key = '5731568a-75ed-4a6e-b906-7c3cda415405';
-$app_id = '64ec0e7df4070c0028ff4a07';
+$api_key = 'XXXXXXXXXXXXXXXXXXXXXXXXXX';
+$app_id = 'XXXXXXXXXXXXXXXXXXXXXXXXXXX';
 
 
 $job_id = "66b062e489b9350028eb3488";

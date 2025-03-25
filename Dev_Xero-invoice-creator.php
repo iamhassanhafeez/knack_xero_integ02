@@ -6,8 +6,8 @@ session_start();
 use GuzzleHttp\Client;
 
 //============ Xero Config ==================
-$clientId = 'DB8962151A3D4C339A0D4B1E12712771';
-$clientSecret = 'hnXTTDTWyKi4Crhw2TEPnxmyP2qX92TH-HoCadvanaVX9w-P';
+$clientId = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+$clientSecret = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
 // old $redirectUri = 'http://localhost/xero-app-new/index.php';
 $redirectUri = 'http://localhost/knack_xero_integration/Xero-invoice-creator.php';
 
@@ -32,8 +32,8 @@ $XeroSetupTableEndPoint = 'https://api.knack.com/v1/objects/object_39/records';
 
 
 
-$api_key = '5731568a-75ed-4a6e-b906-7c3cda415405';
-$app_id = '64ec0e7df4070c0028ff4a07';
+$api_key = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+$app_id = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
 
 
 // Let's establish a connection with Xero first

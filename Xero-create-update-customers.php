@@ -22,7 +22,7 @@ $provider = new \League\OAuth2\Client\Provider\GenericProvider([
 // =============================== Knack Configuration =======================
 $CustomersTableEndPoint = 'https://api.knack.com/v1/objects/object_1/records';
 $api_key = '5731568a-75ed-4a6e-b906-7c3cda415405';
-$app_id = '64ec0e7df4070c0028ff4a07';
+$app_id = 'XXXXXXXXXXXXXXXXXXXXXXXXXXX';
 
 
 // Let's establish a connection with Xero first
